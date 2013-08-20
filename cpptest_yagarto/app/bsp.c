@@ -42,17 +42,6 @@ static uint32_t tick_time = 0;
 uint32_t millis(void) {
 	return tick_time;
 }
-__inline void delay_ms(uint32_t count) {
-	//TODO: if the systick is not enabled, we should implement this
-	//delay function with a while(cnt){cnt--;nop;} loop.
-	uint32_t end_time = millis() + (count >> 1);
-	while(end_time - millis());
-}
-
-__inline void delay_us(uint32_t count) {
-	count = count * (SystemCoreClock / 1000000);
-	for(; count > 0; count--);
-}
 
 void SysTick_Handler(void) {
 	tick_time++;

@@ -19,8 +19,17 @@
 
 void BSP_init(void);
 uint32_t millis(void);
-__inline void delay_ms(uint32_t count);
-__inline void delay_us(uint32_t count);
+__inline void delay_ms(uint32_t count) {
+	//TODO: if the systick is not enabled, we should implement this
+	//delay function with a while(cnt){cnt--;nop;} loop.
+	uint32_t end_time = millis() + (count >> 1);
+	while(end_time - millis());
+}
+
+__inline void delay_us(uint32_t count) {
+	count = count * (SystemCoreClock / 1000000);
+	for(; count > 0; count--);
+}
 #define delay delay_ms
 extern USB_OTG_CORE_HANDLE USB_OTG_Core_dev;
 

@@ -35,12 +35,14 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/cmsis/STM32_EVAL/STM322xG_EVAL}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/app}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/library/usb}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/library/generic_storage}&quot;"/>
 								</option>
 								<option id="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.preprocessor.def.328245566" name="Defined symbols (-D)" superClass="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="USE_STM322xG_EVAL"/>
 									<listOptionValue builtIn="false" value="USE_USB_OTG_FS"/>
 									<listOptionValue builtIn="false" value="USE_STDPERIPH_DRIVER"/>
 								</option>
+								<option id="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.misc.std.1685515465" name="Language Standard" superClass="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.misc.std" value="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.misc.std.gnu99" valueType="enumerated"/>
 								<inputType id="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.c.compiler.base.input.411529497" superClass="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.c.compiler.base.input"/>
 							</tool>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.elf.cpp.compiler.debug.57400075" name="ARM Yagarto Windows GCC C++ Compiler" superClass="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.elf.cpp.compiler.debug">
@@ -53,6 +55,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/cmsis/STM32_EVAL/STM322xG_EVAL}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/app}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/library/usb}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/library/generic_storage}&quot;"/>
 								</option>
 								<option id="org.eclipse.cdt.cross.arm.gnu.cpp.compiler.option.preprocessor.def.739391435" name="Defined symbols (-D)" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="USE_STM322xG_EVAL"/>
@@ -63,10 +66,10 @@
 							</tool>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.elf.c.linker.debug.1285094509" name="ARM Yagarto Windows GCC C Linker" superClass="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.elf.c.linker.debug"/>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.elf.cpp.linker.debug.909042814" name="ARM Yagarto Windows GCC C++ Linker" superClass="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.elf.cpp.linker.debug">
-								<option id="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.scriptfile.1529010115" name="Script file (-T)" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.scriptfile" value="D:\workspace_kp\cpptest_yagarto\prj\stm32_flash.ld" valueType="string"/>
+								<option id="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.scriptfile.1529010115" name="Script file (-T)" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.scriptfile" value="C:\Users\Hz\git\cpptest2\cpptest_yagarto\prj\stm32_flash.ld" valueType="string"/>
 								<option id="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.nostart.861313747" name="Do not use standard start files (-nostartfiles)" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.nostart" value="false" valueType="boolean"/>
 								<option id="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.gcsections.1942521427" name="Remove unused sections (-Xlinker --gc-sections)" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.gcsections" value="true" valueType="boolean"/>
-								<option id="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.paths.784852047" name="Library search path (-L)" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.paths" valueType="libPaths"/>
+								<option id="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.paths.784852047" name="Library search path (-L)" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.link.option.paths"/>
 								<inputType id="org.eclipse.cdt.cross.arm.gnu.cpp.linker.input.584320232" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -78,6 +81,9 @@
 							<tool id="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.elf.printsize.debug.1209523920" name="ARM Yagarto Windows GNU Print Size" superClass="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.elf.printsize.debug"/>
 						</toolChain>
 					</folderInfo>
+					<sourceEntries>
+						<entry excluding="library/generic_storage/PCpartition|library/generic_storage/FAT|library/generic_storage/FAT/FatFS/src/option/unicode.c|library/generic_storage/FAT/FatFS/src/option/cc950.c|library/generic_storage/FAT/FatFS/src/option/cc949.c|library/generic_storage/FAT/FatFS/src/option/cc936.c|library/generic_storage/FAT/FatFS/src/option/cc932.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+					</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
@@ -126,6 +132,9 @@
 							<tool id="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.elf.printsize.release.1395424496" name="ARM Yagarto Windows GNU Print Size" superClass="org.eclipse.cdt.cross.arm.gnu.yagarto.windows.elf.printsize.release"/>
 						</toolChain>
 					</folderInfo>
+					<sourceEntries>
+						<entry excluding="library/generic_storage/PCpartition|library/generic_storage/FAT|library/generic_storage/FAT/FatFS/src/option/cc950.c|library/generic_storage/FAT/FatFS/src/option/cc949.c|library/generic_storage/FAT/FatFS/src/option/cc936.c|library/generic_storage/FAT/FatFS/src/option/cc932.c|library/generic_storage/FAT/FatFS/src/option/unicode.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+					</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>

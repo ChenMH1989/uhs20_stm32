@@ -105,7 +105,7 @@ USB Usb(&USB_OTG_Core_dev);
 USBHub Hub(&Usb);
 HIDBoot<HID_PROTOCOL_KEYBOARD> HidKeyboard(&Usb);
 KbdRptParser Prs;
-BulkOnly Bulk(&Usb);
+//BulkOnly Bulk(&Usb);
 
 int main(void)
 {
