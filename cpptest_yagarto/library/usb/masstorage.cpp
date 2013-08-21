@@ -308,7 +308,7 @@ uint8_t BulkOnly::ConfigureDevice(uint8_t parent, uint8_t port, bool lowspeed) {
 	p->lowspeed = lowspeed;
 	// Get device descriptor
 	rcode = pUsb->getDevDescr(0, 0, constBufSize, (uint8_t*)buf);
-	STM_EVAL_LEDToggle(LED1);
+	//STM_EVAL_LEDToggle(LED1);
 
 	// Restore p->epinfo
 	p->epinfo = oldep_ptr;
@@ -412,7 +412,7 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
                 if (bNumEP > 1)
                         break;
         } // for
-        STM_EVAL_LEDToggle(LED1);
+        //STM_EVAL_LEDToggle(LED1);
 
         if (bNumEP < 3)
 			return USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
@@ -422,7 +422,7 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 
         // Set Configuration Value
         rcode = pUsb->setConf(bAddress, 0, bConfNum);
-        STM_EVAL_LEDToggle(LED1);
+        //STM_EVAL_LEDToggle(LED1);
 
         if (rcode)
 			goto FailSetConfDescr;
@@ -433,7 +433,7 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         rcode = GetMaxLUN(&bMaxLUN);
         if (rcode)
 			goto FailGetMaxLUN;
-        STM_EVAL_LEDToggle(LED1);
+        //STM_EVAL_LEDToggle(LED1);
 
         if (bMaxLUN >= MASS_MAX_SUPPORTED_LUN) bMaxLUN = MASS_MAX_SUPPORTED_LUN - 1;
         ErrorMessage<uint8_t > (PSTR("MaxLUN"), bMaxLUN);
@@ -461,7 +461,7 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         for (uint8_t lun = 0; lun <= bMaxLUN; lun++) {
                 InquiryResponse response;
                 rcode = Inquiry(lun, sizeof (InquiryResponse), (uint8_t*) & response);
-                STM_EVAL_LEDToggle(LED1);
+                //STM_EVAL_LEDToggle(LED1);
                 if (rcode) {
 					printf("\nInquiry errcode=%d", rcode);
                 } else {
@@ -472,19 +472,19 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 							// try to lock media and spin up
 							if (tries < 14) {
 								LockMedia(lun, 1);
-								STM_EVAL_LEDToggle(LED1);
+								//STM_EVAL_LEDToggle(LED1);
 								MediaCTL(lun, 1); // I actually have a USB stick that needs this!
-								STM_EVAL_LEDToggle(LED1);
+								//STM_EVAL_LEDToggle(LED1);
 							} else delay(2 * (tries + 1));
 							tries++;
 							if (!tries) break;
                         }
-                    	STM_EVAL_LEDToggle(LED1);
+                    	//STM_EVAL_LEDToggle(LED1);
                         if (!rcode) {
 							delay(1000);
 							LUNOk[lun] = CheckLUN(lun);
 							if (!LUNOk[lun]) LUNOk[lun] = CheckLUN(lun);
-							STM_EVAL_LEDToggle(LED1);
+							//STM_EVAL_LEDToggle(LED1);
 
                         }
                 }
@@ -1124,7 +1124,7 @@ uint8_t BulkOnly::Transaction(CommandBlockWrapper *pcbw, uint16_t buf_size, void
         while(1) {
         	URB_Status = USB::HCD_GetURB_State(pUsb->coreConfig, epInfo[epDataOutIndex].hcNumOut);
 			if(URB_Status == URB_DONE) {
-		        //STM_EVAL_LEDToggle(LED1);
+		        STM_EVAL_LEDToggle(LED1);
 		        break;
 			}
 		}
@@ -1146,7 +1146,7 @@ uint8_t BulkOnly::Transaction(CommandBlockWrapper *pcbw, uint16_t buf_size, void
                                 	while(1) {
 										URB_Status = USB::HCD_GetURB_State(pUsb->coreConfig, epInfo[epDataInIndex].hcNumIn);
 										if(URB_Status == URB_DONE) {
-											//STM_EVAL_LEDToggle(LED1);
+											STM_EVAL_LEDToggle(LED1);
 											break;
 										}
 									}
@@ -1158,7 +1158,7 @@ uint8_t BulkOnly::Transaction(CommandBlockWrapper *pcbw, uint16_t buf_size, void
                         	while(1) {
 								URB_Status = USB::HCD_GetURB_State(pUsb->coreConfig, epInfo[epDataOutIndex].hcNumOut);
 								if(URB_Status == URB_DONE) {
-									//STM_EVAL_LEDToggle(LED1);
+									STM_EVAL_LEDToggle(LED1);
 									break;
 								}
 							}
@@ -1180,7 +1180,7 @@ uint8_t BulkOnly::Transaction(CommandBlockWrapper *pcbw, uint16_t buf_size, void
                 	while(1) {
 						URB_Status = USB::HCD_GetURB_State(pUsb->coreConfig, epInfo[epDataInIndex].hcNumIn);
 						if(URB_Status == URB_DONE) {
-							//STM_EVAL_LEDToggle(LED1);
+							STM_EVAL_LEDToggle(LED1);
 							break;
 						}
 					}

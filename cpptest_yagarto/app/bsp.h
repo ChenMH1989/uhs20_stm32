@@ -18,6 +18,7 @@
 #include "stm322xg_eval.h"
 
 void BSP_init(void);
+uint8_t GetKey(void);
 uint32_t millis(void);
 __inline void delay_ms(uint32_t count) {
 	//TODO: if the systick is not enabled, we should implement this

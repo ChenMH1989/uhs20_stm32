@@ -19,6 +19,18 @@ int __uart_putchar(int ch)
 	return ch;
 }
 
+uint8_t GetKey(void)
+{
+	uint8_t RetVal;
+
+	RetVal = 0;
+	if (EVAL_COM1->SR & USART_FLAG_RXNE) {
+		RetVal = 0xFF & USART_ReceiveData(EVAL_COM1);
+	}
+
+	return(RetVal);
+}
+
 void BSP_init(void) {
 	/* Configure the system ready to run the demo.  The clock configuration
 	can be done here if it was not done before main() was called. */

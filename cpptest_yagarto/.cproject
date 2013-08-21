@@ -82,7 +82,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="library/generic_storage/PCpartition|library/generic_storage/FAT|library/generic_storage/FAT/FatFS/src/option/unicode.c|library/generic_storage/FAT/FatFS/src/option/cc950.c|library/generic_storage/FAT/FatFS/src/option/cc949.c|library/generic_storage/FAT/FatFS/src/option/cc936.c|library/generic_storage/FAT/FatFS/src/option/cc932.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="library/generic_storage/Storage.cpp|library/generic_storage/PCpartition|library/generic_storage/FAT|library/generic_storage/FAT/FatFS/src/option/unicode.c|library/generic_storage/FAT/FatFS/src/option/cc950.c|library/generic_storage/FAT/FatFS/src/option/cc949.c|library/generic_storage/FAT/FatFS/src/option/cc936.c|library/generic_storage/FAT/FatFS/src/option/cc932.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -133,7 +133,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="library/generic_storage/PCpartition|library/generic_storage/FAT|library/generic_storage/FAT/FatFS/src/option/cc950.c|library/generic_storage/FAT/FatFS/src/option/cc949.c|library/generic_storage/FAT/FatFS/src/option/cc936.c|library/generic_storage/FAT/FatFS/src/option/cc932.c|library/generic_storage/FAT/FatFS/src/option/unicode.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="library/generic_storage/Storage.cpp|library/generic_storage/PCpartition|library/generic_storage/FAT|library/generic_storage/FAT/FatFS/src/option/cc950.c|library/generic_storage/FAT/FatFS/src/option/cc949.c|library/generic_storage/FAT/FatFS/src/option/cc936.c|library/generic_storage/FAT/FatFS/src/option/cc932.c|library/generic_storage/FAT/FatFS/src/option/unicode.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
