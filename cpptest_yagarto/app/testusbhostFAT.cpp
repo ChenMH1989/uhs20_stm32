@@ -223,6 +223,7 @@ void demo_fileoperation(void) {
 				rc = f_close(&My_File_Object_x);
 				if (rc) goto out;
 			}
+/*
 			printf(PSTR("\r\nCreate a new file (hello.txt).\r\n"));
 			rc = f_open(&My_File_Object_x, "0:/Hello.TxT", FA_WRITE | FA_CREATE_ALWAYS);
 			if (rc) {
@@ -242,6 +243,7 @@ void demo_fileoperation(void) {
 				die(rc);
 				goto out;
 			}
+*/
 out:
 			if (rc) die(rc);
 			printf(PSTR("\r\nTest completed.\r\n"));
@@ -251,8 +253,78 @@ out:
 }
 
 void demo_directorybrowse(void) {
-    printf(PSTR("\r\nDirectory listing...\r\n"));
 
+    if (fatready) {
+		FRESULT rc; /* Result code */
+		UINT bw, br, i;
+
+		if (!notified) {
+outdir:
+#if _USE_LFN
+			char lfn[_MAX_LFN + 1];
+			FILINFO My_File_Info_Object_x; /* File information object */
+			My_File_Info_Object_x.lfname = lfn;
+#endif
+			DIR My_Dir_Object_x; /* Directory object */
+			printf(PSTR("\r\nOpen root directory.\r\n"));
+			rc = f_opendir(&My_Dir_Object_x, "0:/");
+			if (rc) {
+				die(rc);
+				goto out;
+			}
+
+			printf(PSTR("\r\nDirectory listing...\r\n"));
+			for (;;) {
+#if _USE_LFN
+				My_File_Info_Object_x.lfsize = _MAX_LFN;
+#endif
+
+				rc = f_readdir(&My_Dir_Object_x, &My_File_Info_Object_x); /* Read a directory item */
+				if (rc || !My_File_Info_Object_x.fname[0]) break; /* Error or end of dir */
+
+				if (My_File_Info_Object_x.fattrib & AM_DIR) {
+					printf("d");
+				} else {
+					printf("-");
+				}
+				printf("r");
+
+				if (My_File_Info_Object_x.fattrib & AM_RDO) {
+					printf("-");
+				} else {
+					printf("w");
+				}
+				if (My_File_Info_Object_x.fattrib & AM_HID) {
+					printf("h");
+				} else {
+					printf("-");
+				}
+
+				if (My_File_Info_Object_x.fattrib & AM_SYS) {
+					printf("s");
+				} else {
+					printf("-");
+				}
+
+				if (My_File_Info_Object_x.fattrib & AM_ARC) {
+					printf("a");
+				} else {
+					printf("-");
+				}
+
+#if _USE_LFN
+				if (*My_File_Info_Object_x.lfname)
+					printf(PSTR(" %d  %s (%s)\r\n"), My_File_Info_Object_x.fsize, My_File_Info_Object_x.fname, My_File_Info_Object_x.lfname);
+				else
+#endif
+					printf(PSTR(" %d  %s\r\n"), My_File_Info_Object_x.fsize, &(My_File_Info_Object_x.fname[0]));
+			}
+out:
+			if (rc) die(rc);
+			printf(PSTR("\r\nTest completed.\r\n"));
+
+		}
+    }
 }
 
 void demo_speedtest(void) {

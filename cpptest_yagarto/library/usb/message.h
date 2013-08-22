@@ -76,10 +76,10 @@ void ErrorMessage(uint8_t level, char const * msg, ERROR_TYPE rcode = 0) {
 template <class ERROR_TYPE>
 void ErrorMessage(char const * msg, ERROR_TYPE rcode = 0) {
 #if 1 //def DEBUG_USB_HOST
-        Notify(msg, 0x80);
-        Notify(PSTR(": "), 0x80);
-        D_PrintHex<ERROR_TYPE > (rcode, 0x80);
-        Notify(PSTR("\r\n"), 0x80);
+        Notify(msg, 0x90);
+        Notify(PSTR(": "), 0x90);
+        D_PrintHex<ERROR_TYPE > (rcode, 0x90);
+        Notify(PSTR("\r\n"), 0x90);
 #endif
 }
 
