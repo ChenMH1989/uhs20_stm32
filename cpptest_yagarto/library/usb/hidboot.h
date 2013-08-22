@@ -402,11 +402,13 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
         //TODO: the out channel should not be used.
         epInfo[1].hcNumIn = USB::USBH_Alloc_Channel(pUsb->coreConfig, epInfo[1].epAddr);
         //epInfo[1].hcNumOut = USB::USBH_Alloc_Channel(pUsb->coreConfig, epInfo[1].epAddr);
+		printf("\nAllocated hc num_in = %d (EP_TYPE_INTR)", epInfo[1].hcNumIn);
 
         // Assign epInfo to epinfo pointer
         rcode = pUsb->setEpInfoEntry(bAddress, bNumEP, epInfo);
         USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[1].hcNumIn, bAddress, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_INTR, epInfo[1].maxPktSize);
         //USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[1].hcNumOut, bAddress, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_INTR, epInfo[1].maxPktSize);
+        pUsb->coreConfig->host.hc[epInfo[1].hcNumIn].toggle_in ^= 0x1;
 
         return 0;
 
@@ -528,13 +530,14 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Poll(USB_OTG_CORE_HANDLE *pdev) {
 */
 		//if(rcode != HC_XFRC && rcode != HC_DATATGLERR) {
 			if(rcode != HC_NAK) {
+				STM_EVAL_LEDToggle(LED1);
 				printf("\nPoll:%d <- ", rcode);
 			} else
 				return rcode;
 		//}
 		//STM_EVAL_LEDToggle(LED1);
 		if(rcode == HC_DATATGLERR) {
-	        //pep->bmRcvToggle ^= 0x1;
+	        //pdev->host.hc[epInfo[epInterruptInIndex].hcNumIn].toggle_in ^= 0x1;
 	        return rcode;
 		}
 /* Friday, mask because I changed the inTransfer for msc class

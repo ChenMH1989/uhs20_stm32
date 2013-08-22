@@ -188,8 +188,8 @@ TryAgain:
 			{
 				uint16_t left = total;
 
-				pep->bmRcvToggle = 1; //bmRCVTOG1;
-
+				//pep->bmRcvToggle = 1; //bmRCVTOG1;
+				pdev->host.hc[pep->hcNumIn].toggle_in = 0x1;
 				uint16_t read = total;	//nbytes;
 				rcode = InTransfer(pep, nak_limit, &read, dataptr);
 				//STM_EVAL_LEDToggle(LED1);
@@ -236,7 +236,8 @@ TryAgain:
 				}
 #endif
 			} else {	//OUT transfer
-					pep->bmSndToggle = 1; //bmSNDTOG1;
+					//pep->bmSndToggle = 1; //bmSNDTOG1;
+					pdev->host.hc[pep->hcNumOut].toggle_out = 0x1;
 					rcode = OutTransfer(pep, nak_limit, nbytes, dataptr);
 			}
 			if (rcode) //return error
@@ -247,10 +248,11 @@ TryAgain:
         uint32_t hc_num = 0;
         if(direction) {
         	hc_num = pep->hcNumOut;
-        	pdev->host.hc[hc_num].toggle_out ^= 1;
+        	pdev->host.hc[hc_num].toggle_out ^= 0x1;
         	rcode = OutTransfer(pep, nak_limit, 0, 0);
 		} else {
 			hc_num = pep->hcNumIn;
+			pdev->host.hc[hc_num].toggle_in = 0x1;
 			rcode = InTransfer(pep, nak_limit, 0, 0);
 		}
         while(1) {
@@ -318,10 +320,16 @@ uint8_t USB::inTransfer(uint8_t addr, uint8_t ep, uint16_t *nbytesptr, uint8_t* 
 			//printf("SetAddress Failed");
 			return rcode;
         }
-        //if(HCD_GetHCState(pdev, pep->hcNumIn) == HC_DATATGLERR)
-		rcode = HCD_GetHCState(pdev, pep->hcNumIn);
-		if (rcode == HC_XFRC)
-			pep->bmRcvToggle ^= 0x1;
+
+		USB_OTG_HCCHAR_TypeDef hcchar;
+		hcchar.d32 = USB_OTG_READ_REG32(&pdev->regs.HC_REGS[pep->hcNumIn]->HCCHAR);
+		if(hcchar.b.eptype == EP_TYPE_INTR) {
+			//rcode = HCD_GetHCState(pdev, pep->hcNumIn);
+			//if (rcode == HC_XFRC) {
+				//pep->bmRcvToggle ^= 0x1;
+				pdev->host.hc[pep->hcNumIn].toggle_in ^= 0x1;
+			//}
+		}
 
         return InTransfer(pep, nak_limit, nbytesptr, data);
 }
@@ -349,7 +357,7 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 	uint32_t hc_num = pep->hcNumIn;	//pdev->host.hc_num_in;
 
 	//regWr(rHCTL, (pep->bmRcvToggle) ? bmRCVTOG1 : bmRCVTOG0); //set toggle value
-	pdev->host.hc[hc_num].data_pid = (pep->bmRcvToggle) ? HC_PID_DATA1 : HC_PID_DATA0;
+	pdev->host.hc[hc_num].data_pid = (pdev->host.hc[hc_num].toggle_in) ? HC_PID_DATA1 : HC_PID_DATA0;
 	pdev->host.hc[hc_num].ep_is_in = 1;
 	pdev->host.hc[hc_num].xfer_buff = data;	//buff;
 	pdev->host.hc[hc_num].xfer_len = nbytes;	//length;
@@ -358,57 +366,77 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 #if 0
 	while (1) // use a 'return' to exit this loop
 	{
-		rcode = dispatchPkt(tokIN, pep->epAddr, nak_limit); //IN packet to EP-'endpoint'. Function takes care of NAKS.
-		if (rcode == hrTOGERR) {
-				// yes, we flip it wrong here so that next time it is actually correct!
-				pep->bmRcvToggle = (regRd(rHRSL) & bmSNDTOGRD) ? 0 : 1;
-				regWr(rHCTL, (pep->bmRcvToggle) ? bmRCVTOG1 : bmRCVTOG0); //set toggle value
-				continue;
+		HCD_SubmitRequest(pdev, hc_num);
+		while(1) {
+			URB_STATE URB_Status = HCD_GetURB_State(pdev, hc_num);
+			if(URB_Status != URB_IDLE) {
+		//		STM_EVAL_LEDToggle(LED1);
+				break;
+			} else {
+				rcode = HCD_GetHCState(pdev, hc_num);
+				if(rcode == HC_NAK)
+					break;
+			}
+		}
+		rcode = HCD_GetHCState(pdev, hc_num);	//dispatchPkt(tokIN, pep->epAddr, nak_limit); //IN packet to EP-'endpoint'. Function takes care of NAKS.
+		if (rcode == HC_DATATGLERR) { //hrTOGERR) {
+			// yes, we flip it wrong here so that next time it is actually correct!
+			pep->bmRcvToggle ^= 0x1;	//= (regRd(rHRSL) & bmSNDTOGRD) ? 0 : 1;
+			pdev->host.hc[hc_num].data_pid = (pep->bmRcvToggle) ? HC_PID_DATA1 : HC_PID_DATA0;
+			//regWr(rHCTL, (pep->bmRcvToggle) ? bmRCVTOG1 : bmRCVTOG0); //set toggle value
+			continue;
+		}
+
+		if(rcode == HC_XFRC) {
+			//pep->bmRcvToggle ^= 0x1;
+			break;
 		}
 		if (rcode) {
-				//printf(">>>>>>>> Problem! dispatchPkt %2.2x\r\n", rcode);
-				break; //should be 0, indicating ACK. Else return error code.
+			printf(">>>>>>>> Problem! dispatchPkt %d\r\n", rcode);
+			break; //should be 0, indicating ACK. Else return error code.
 		}
+
 		/* check for RCVDAVIRQ and generate error if not present */
 		/* the only case when absence of RCVDAVIRQ makes sense is when toggle error occurred. Need to add handling for that */
-		if ((regRd(rHIRQ) & bmRCVDAVIRQ) == 0) {
-				//printf(">>>>>>>> Problem! NO RCVDAVIRQ!\r\n");
-				rcode = 0xf0; //receive error
-				break;
-		}
-		pktsize = regRd(rRCVBC); //number of received bytes
+//		if ((regRd(rHIRQ) & bmRCVDAVIRQ) == 0) {
+//				//printf(">>>>>>>> Problem! NO RCVDAVIRQ!\r\n");
+//				rcode = 0xf0; //receive error
+//				break;
+//		}
+//		pktsize = regRd(rRCVBC); //number of received bytes
 		//printf("Got %i bytes \r\n", pktsize);
 		// This would be OK, but...
 		//assert(pktsize <= nbytes);
-		if (pktsize > nbytes) {
+//		if (pktsize > nbytes) {
 				// This can happen. Use of assert on Arduino locks up the Arduino.
 				// So I will trim the value, and hope for the best.
 				//printf(">>>>>>>> Problem! Wanted %i bytes but got %i.\r\n", nbytes, pktsize);
-				pktsize = nbytes;
-		}
+//				pktsize = nbytes;
+//		}
 
-		int16_t mem_left = (int16_t)nbytes - *((int16_t*)nbytesptr);
+//		int16_t mem_left = (int16_t)nbytes - *((int16_t*)nbytesptr);
 
-		if (mem_left < 0)
-				mem_left = 0;
+//		if (mem_left < 0)
+//				mem_left = 0;
 
-		data = bytesRd(rRCVFIFO, ((pktsize > mem_left) ? mem_left : pktsize), data);
+//		data = bytesRd(rRCVFIFO, ((pktsize > mem_left) ? mem_left : pktsize), data);
 
-		regWr(rHIRQ, bmRCVDAVIRQ); // Clear the IRQ & free the buffer
-		*nbytesptr += pktsize; // add this packet's byte count to total transfer length
+//		regWr(rHIRQ, bmRCVDAVIRQ); // Clear the IRQ & free the buffer
+//		*nbytesptr += pktsize; // add this packet's byte count to total transfer length
 
 		/* The transfer is complete under two conditions:           */
 		/* 1. The device sent a short packet (L.T. maxPacketSize)   */
 		/* 2. 'nbytes' have been transferred.                       */
-		if ((pktsize < maxpktsize) || (*nbytesptr >= nbytes)) // have we transferred 'nbytes' bytes?
-		{
+//		if ((pktsize < maxpktsize) || (*nbytesptr >= nbytes)) // have we transferred 'nbytes' bytes?
+//		{
 				// Save toggle value
-				pep->bmRcvToggle = ((regRd(rHRSL) & bmRCVTOGRD)) ? 1 : 0;
+//				pep->bmRcvToggle = ((regRd(rHRSL) & bmRCVTOGRD)) ? 1 : 0;
 				//printf("\r\n");
-				rcode = 0;
-				break;
-		} // if
+//				rcode = 0;
+//				break;
+//		} // if
 	} //while( 1 )
+
 #endif
 #endif
 	return(rcode);

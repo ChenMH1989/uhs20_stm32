@@ -684,7 +684,11 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
       UNMASK_HOST_INT_CHH (num);
       USB::USB_OTG_HC_Halt(pdev, num);
       CLEAR_HC_INT(hcreg , nak); 
-      pdev->host.hc[num].toggle_in ^= 1;
+      if(pdev->host.hc[num].isEvenTimesToggle) {	// even times packets has been transfered.
+    	  pdev->host.hc[num].isEvenTimesToggle = 0;
+      } else {
+    	  pdev->host.hc[num].toggle_in ^= 1;
+      }
       
     }
     else if(hcchar.b.eptype == EP_TYPE_INTR)
@@ -719,6 +723,8 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
     else if(hcchar.b.eptype == EP_TYPE_INTR)
     {
       pdev->host.hc[num].toggle_in ^= 1;
+      //pdev->host.URB_State[num] = URB_DONE;      // for nak case
+
     }
     
     CLEAR_HC_INT(hcreg , chhltd);    

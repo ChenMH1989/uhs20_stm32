@@ -134,14 +134,14 @@ uint8_t BulkOnly::MediaCTL(uint8_t lun, uint8_t ctl) {
 uint8_t BulkOnly::Read(uint8_t lun, uint32_t addr, uint16_t bsize, uint8_t blocks, uint8_t *buf) {
         if (!LUNOk[lun]) return MASS_ERR_NO_MEDIA;
         Notify(PSTR("\r\nRead LUN:\t"), 0x80);
-        D_PrintHex<uint8_t > (lun, 0x90);
+        D_PrintHex<uint8_t > (lun, 0x80);
         //printf("LUN=%i LBA=%8.8X BLOCKS=%i SIZE=%i\r\n", lun, addr, blocks, bsize);
-        Notify(PSTR("\r\nLBA:\t\t"), 0x90);
-        D_PrintHex<uint32_t > (addr, 0x90);
-        Notify(PSTR("\r\nblocks:\t\t"), 0x90);
-        D_PrintHex<uint8_t > (blocks, 0x90);
-        Notify(PSTR("\r\nblock size:\t"), 0x90);
-        D_PrintHex<uint16_t > (bsize, 0x90);
+        Notify(PSTR("\r\nLBA:\t\t"), 0x80);
+        D_PrintHex<uint32_t > (addr, 0x80);
+        Notify(PSTR("\r\nblocks:\t\t"), 0x80);
+        D_PrintHex<uint8_t > (blocks, 0x80);
+        Notify(PSTR("\r\nblock size:\t"), 0x80);
+        D_PrintHex<uint16_t > (bsize, 0x80);
         Notify(PSTR("\r\n---------\r\n"), 0x80);
         CommandBlockWrapper cbw;
 

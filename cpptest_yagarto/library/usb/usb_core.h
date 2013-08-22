@@ -128,6 +128,7 @@ typedef struct USB_OTG_hc
   uint32_t      xfer_count;  
   //TODO: i need to cut these two toggle vars, and use the bmSndToggle/bmRcvToggle instead.
   uint8_t       toggle_in;
+  uint8_t isEvenTimesToggle;
   uint8_t       toggle_out;
   uint32_t       dma_addr;  
 }

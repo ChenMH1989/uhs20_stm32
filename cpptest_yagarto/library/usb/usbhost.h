@@ -762,6 +762,7 @@ uint8_t STM32F2< SS, INTR >::USBH_Open_Channel  (USB_OTG_CORE_HANDLE *pdev,
   pdev->host.hc[hc_num].max_packet = mps;
   pdev->host.hc[hc_num].speed = speed;
   pdev->host.hc[hc_num].toggle_in = 0;
+  pdev->host.hc[hc_num].isEvenTimesToggle = 0;
   pdev->host.hc[hc_num].toggle_out = 0;
   if(speed == HPRT0_PRTSPD_HIGH_SPEED)
   {
@@ -1009,6 +1010,8 @@ USB_OTG_STS STM32F2< SS, INTR >::USB_OTG_HC_StartXfer(USB_OTG_CORE_HANDLE *pdev 
   {
     num_packets = (pdev->host.hc[hc_num].xfer_len + \
       pdev->host.hc[hc_num].max_packet - 1) / pdev->host.hc[hc_num].max_packet;
+    if(!(num_packets & 0x1))
+    	pdev->host.hc[hc_num].isEvenTimesToggle = 1;
 
     if (num_packets > max_hc_pkt_count)
     {

@@ -467,6 +467,7 @@ uint32_t wkupintr :
   }
   b;
 } USB_OTG_GINTMSK_TypeDef ;
+
 typedef union _USB_OTG_GINTSTS_TypeDef 
 {
   uint32_t d32;
