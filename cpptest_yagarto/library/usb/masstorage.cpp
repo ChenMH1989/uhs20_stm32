@@ -1154,13 +1154,15 @@ uint8_t BulkOnly::Transaction(CommandBlockWrapper *pcbw, uint16_t buf_size, void
                                 ret = HandleUsbError(usberr, epDataInIndex);
                         } else {
                                 //while ((usberr = pUsb->outTransfer(bAddress, epInfo[epDataOutIndex].epAddr, bytes, (uint8_t*)buf)) == hrBUSY) delay(1);
+NotReady:
                         	usberr = pUsb->outTransfer(bAddress, epInfo[epDataOutIndex].epAddr, bytes, (uint8_t*)buf);
                         	while(1) {
 								URB_Status = USB::HCD_GetURB_State(pUsb->coreConfig, epInfo[epDataOutIndex].hcNumOut);
 								if(URB_Status == URB_DONE) {
 									STM_EVAL_LEDToggle(LED1);
 									break;
-								}
+								} else if (URB_Status == URB_NOTREADY)
+									goto NotReady;
 							}
 							ret = HandleUsbError(usberr, epDataOutIndex);
                         }

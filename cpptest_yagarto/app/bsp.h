@@ -23,7 +23,7 @@ uint32_t millis(void);
 __inline void delay_ms(uint32_t count) {
 	//TODO: if the systick is not enabled, we should implement this
 	//delay function with a while(cnt){cnt--;nop;} loop.
-	uint32_t end_time = millis() + (count >> 1);
+	uint32_t end_time = millis() + count;	// + (count >> 1);
 	while(end_time - millis());
 }
 

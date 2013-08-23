@@ -188,7 +188,7 @@ static void prvSetupHardware( void )
 	http://www.freertos.org/RTOS-Cortex-M3-M4.html */
 	NVIC_SetPriorityGrouping( 0 );
 
-	SysTick_Config(SystemCoreClock / 500);
+	SysTick_Config(SystemCoreClock / 1000);
 
 }
 

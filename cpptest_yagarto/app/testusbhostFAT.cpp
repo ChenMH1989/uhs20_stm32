@@ -192,6 +192,7 @@ void demo_fileoperation(void) {
 		UINT bw, br, i;
 
 		fadeAmount = 5;
+#if 0
 		printf(PSTR("\r\nOpen an existing file (message.txt).\r\n"));
 		rc = f_open(&My_File_Object_x, "0:/MESSAGE.TXT", FA_READ);
 		if (rc) printf(PSTR("Error %i, message.txt not found.\r\n"));
@@ -218,7 +219,7 @@ void demo_fileoperation(void) {
 			rc = f_close(&My_File_Object_x);
 			if (rc) goto out;
 		}
-/*
+#endif
 		printf(PSTR("\r\nCreate a new file (hello.txt).\r\n"));
 		rc = f_open(&My_File_Object_x, "0:/Hello.TxT", FA_WRITE | FA_CREATE_ALWAYS);
 		if (rc) {
@@ -226,7 +227,7 @@ void demo_fileoperation(void) {
 			goto out;
 		}
 		printf(PSTR("\r\nWrite a text data. (Hello world!)\r\n"));
-		rc = f_write(&My_File_Object_x, "Hello world!\r\n", 14, &bw);
+		rc = f_write(&My_File_Object_x, "Hello world!\r\n16:12 2013/8/23\r\r\n\nHozen", 30, &bw);
 		if (rc) {
 			goto out;
 		}
@@ -238,7 +239,7 @@ void demo_fileoperation(void) {
 			die(rc);
 			goto out;
 		}
-*/
+
 out:
 		if (rc) die(rc);
 		printf(PSTR("\r\nTest completed.\r\n"));
@@ -321,7 +322,44 @@ out:
 }
 
 void demo_speedtest(void) {
-	printf(PSTR("\r\nCreate a new 10MB test file (10MB.bin).\r\n"));
+	if(fatready) {
+		FRESULT rc; /* Result code */
+		UINT bw, br, i;
+
+		ULONG ii, wt, rt, start, end;
+		runtest = false;
+		f_unlink("0:/10MB.bin");
+		printf(PSTR("\r\nCreate a new 10MB test file (10MB.bin).\r\n"));
+		rc = f_open(&My_File_Object_x, "0:/10MB.bin", FA_WRITE | FA_CREATE_ALWAYS);
+		if (rc) goto failed;
+		for (bw = 0; bw < mbxs; bw++) My_Buff_x[bw] = bw & 0xff;
+		start = millis();
+		for (ii = 10485760LU / mbxs; ii > 0LU; ii--) {
+				rc = f_write(&My_File_Object_x, My_Buff_x, mbxs, &bw);
+				if (rc || !bw) goto failed;
+		}
+		rc = f_close(&My_File_Object_x);
+		if (rc) goto failed;
+		end = millis();
+		wt = end - start;
+		printf(PSTR("Time to write 10485760 bytes: %d ms (%d sec) \r\n"), wt, (500 + wt) / 1000UL);
+		rc = f_open(&My_File_Object_x, "0:/10MB.bin", FA_READ);
+		start = millis();
+		if (rc) goto failed;
+		for (;;) {
+				rc = f_read(&My_File_Object_x, My_Buff_x, mbxs, &bw); /* Read a chunk of file */
+				if (rc || !bw) break; /* Error or end of file */
+		}
+		end = millis();
+		if (rc) goto failed;
+		rc = f_close(&My_File_Object_x);
+		if (rc) goto failed;
+		rt = end - start;
+		printf(PSTR("Time to read 10485760 bytes: %d ms (%d sec)\r\nDelete test file\r\n"), rt, (500 + rt) / 1000UL);
+failed:
+		if (rc) die(rc);
+		printf(PSTR("10MB timing test finished.\r\n"));
+	}
 }
 
 bool PStatus(storage_t *sto) {

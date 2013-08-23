@@ -28,8 +28,10 @@ e-mail   :  support@circuitsathome.com
 #include "usb_defines.h"
 
 #define RX_FIFO_FS_SIZE                          128
-#define TXH_NP_FS_FIFOSIZ                         96
-#define TXH_P_FS_FIFOSIZ                          96
+// 1. the stm32's library has a bug when deal with more than NPTXFIFOSIZE data
+// 2. the uhs20 library handles 512 bytes (128words) for each usb transaction.
+#define TXH_NP_FS_FIFOSIZ                        128	// 96
+#define TXH_P_FS_FIFOSIZ                         128	// 96
 
 #define USBH_SETUP_PKT_SIZE   8
 #define USBH_EP0_EP_NUM       0

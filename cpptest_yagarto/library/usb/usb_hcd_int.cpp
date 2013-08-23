@@ -567,7 +567,11 @@ uint32_t USB_OTG_USBH_handle_hc_n_Out_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t 
       
       if (hcchar.b.eptype == EP_TYPE_BULK)
       {
-        pdev->host.hc[num].toggle_out ^= 1; 
+        if(pdev->host.hc[num].isEvenTimesToggle) {	// even times packets has been transfered.
+        	pdev->host.hc[num].isEvenTimesToggle = 0;
+        } else {
+            pdev->host.hc[num].toggle_out ^= 1;
+        }
       }
     }
     else if(pdev->host.HC_Status[num] == HC_NAK)
