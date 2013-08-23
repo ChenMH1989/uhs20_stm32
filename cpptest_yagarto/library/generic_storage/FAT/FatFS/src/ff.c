@@ -99,27 +99,7 @@
 #include "ff.h"			/* FatFs configurations and declarations */
 #include "diskio.h"		/* Declarations of low level disk I/O functions */
 
-/*
-extern void *__brkval;
 
-unsigned int getHeapend() {
-        extern unsigned int __heap_start;
-
-        if((unsigned int) __brkval == 0) {
-                return(unsigned int) &__heap_start;
-        } else {
-                return(unsigned int) __brkval;
-        }
-}
-
-unsigned int freeHeap() {
-        if(SP < (unsigned int) __malloc_heap_start) {
-                return((unsigned int) __malloc_heap_end - getHeapend());
-        } else {
-                return(SP - getHeapend());
-        }
-}
-*/
 /*--------------------------------------------------------------------------
 
    Module Private Definitions

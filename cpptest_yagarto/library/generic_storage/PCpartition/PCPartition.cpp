@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <PCpartition/PCPartition.h>
+#include <FAT/FatFS/src/ffconf.h>
 
 #define PSTR(x) x
 PCPartition::PCPartition() {
@@ -28,9 +29,12 @@ PCPartition::PCPartition() {
 
 /* Identify partition types, if any. If no partition exists, default to super mode. */
 int PCPartition::Init(storage_t *sto) {
-        //printf("Sector size = %i\r\n", sto->SectorSize);
+	//printf("Sector size = %i\r\n", sto->SectorSize);
+	st = -1;
+	if (sto->SectorSize <= _MAX_SS) {
         //uint8_t mybuf[sto->SectorSize *2];
         // WARNING, CAN FAIL!
+                // WARNING, CAN FAIL! this requires _MAX_SS stack space.
         uint8_t buf[sto->SectorSize];
         //buf = (uint8_t *)malloc(sto->SectorSize);
         st = (int)((sto->Read)(0, buf, sto));
@@ -56,7 +60,8 @@ int PCPartition::Init(storage_t *sto) {
                         }
                 }
         }
-        return st;
+	}
+	return st;
 }
 
 part_t * PCPartition::GetPart(int number) {
