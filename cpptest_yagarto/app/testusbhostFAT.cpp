@@ -328,13 +328,13 @@ void demo_speedtest(void) {
 
 		ULONG ii, wt, rt, start, end;
 		runtest = false;
-		f_unlink("0:/10MB.bin");
-		printf(PSTR("\r\nCreate a new 10MB test file (10MB.bin).\r\n"));
-		rc = f_open(&My_File_Object_x, "0:/10MB.bin", FA_WRITE | FA_CREATE_ALWAYS);
+		f_unlink("0:/5MB.bin");
+		printf(PSTR("\r\nCreate a new 5MB test file (5MB.bin).\r\n"));
+		rc = f_open(&My_File_Object_x, "0:/5MB.bin", FA_WRITE | FA_CREATE_ALWAYS);
 		if (rc) goto failed;
 		for (bw = 0; bw < mbxs; bw++) My_Buff_x[bw] = bw & 0xff;
 		start = millis();
-		for (ii = 10485760LU / mbxs; ii > 0LU; ii--) {
+		for (ii = 5242880LU / mbxs; ii > 0LU; ii--) {
 				rc = f_write(&My_File_Object_x, My_Buff_x, mbxs, &bw);
 				if (rc || !bw) goto failed;
 		}
@@ -342,8 +342,8 @@ void demo_speedtest(void) {
 		if (rc) goto failed;
 		end = millis();
 		wt = end - start;
-		printf(PSTR("Time to write 10485760 bytes: %d ms (%d sec) \r\n"), wt, (500 + wt) / 1000UL);
-		rc = f_open(&My_File_Object_x, "0:/10MB.bin", FA_READ);
+		printf(PSTR("Time to write 5,242,880 bytes: %d ms (%d sec) \r\n"), wt, (500 + wt) / 1000UL);
+		rc = f_open(&My_File_Object_x, "0:/5MB.bin", FA_READ);
 		start = millis();
 		if (rc) goto failed;
 		for (;;) {
@@ -355,10 +355,10 @@ void demo_speedtest(void) {
 		rc = f_close(&My_File_Object_x);
 		if (rc) goto failed;
 		rt = end - start;
-		printf(PSTR("Time to read 10485760 bytes: %d ms (%d sec)\r\nDelete test file\r\n"), rt, (500 + rt) / 1000UL);
+		printf(PSTR("Time to read 5,242,880 bytes: %d ms (%d sec)\r\nDelete test file\r\n"), rt, (500 + rt) / 1000UL);
 failed:
 		if (rc) die(rc);
-		printf(PSTR("10MB timing test finished.\r\n"));
+		printf(PSTR("5MB timing test finished.\r\n"));
 	}
 }
 

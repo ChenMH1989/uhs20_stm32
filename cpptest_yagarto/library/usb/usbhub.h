@@ -203,7 +203,7 @@ public:
         virtual uint8_t Poll(USB_OTG_CORE_HANDLE *pdev);
         virtual void ResetHubPort(uint8_t port);
         virtual uint8_t GetAddress() {
-                return bAddress;
+			return bAddress;
         };
         virtual uint8_t DEVCLASSOK(uint8_t klass) { return (klass == 0x09); }
 

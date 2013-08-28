@@ -23,7 +23,7 @@
 /----------------------------------------------------------------------------*/
 
 #ifndef _FS_TINY
-#define	_FS_TINY	1	/* 0:Normal or 1:Tiny */
+#define	_FS_TINY	0	/* 0:Normal or 1:Tiny */
 #endif
 /* When _FS_TINY is set to 1, FatFs uses the sector buffer in the file system
 /  object instead of the sector buffer in the individual file object for file

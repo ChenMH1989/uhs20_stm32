@@ -686,7 +686,7 @@ uint8_t BulkOnly::Poll(USB_OTG_CORE_HANDLE *pdev) {
         uint8_t rcode = 0;
 
         if (!bPollEnable)
-                return 0;
+			return 0;
 
         if (qNextPollTime <= millis()) {
                 CheckMedia();
@@ -934,7 +934,7 @@ uint8_t BulkOnly::Page3F(uint8_t lun) {
  */
 uint8_t BulkOnly::ClearEpHalt(uint8_t index) {
         if (index == 0)
-                return 0;
+			return 0;
 
         uint8_t ret = 0;
 

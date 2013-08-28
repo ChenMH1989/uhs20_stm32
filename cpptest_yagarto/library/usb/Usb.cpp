@@ -154,34 +154,14 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
         setup_pkt.wLength = total;
 
 //        bytesWr(rSUDFIFO, 8, (uint8_t*) & setup_pkt); //transfer to setup packet FIFO
-        /* Write packet into the Tx FIFO. */
-        //USB_OTG_WritePacket(pdev, (uint8_t *)&setup_pkt, pdev->host.hc_num, 8);
-        uint32_t err_cnt = 0;
-TryAgain:
-        USBH_CtlSendSetup(pdev, (uint8_t *)&setup_pkt, pep->hcNumOut);
 
-		/* case SETUP packet sent successfully */
-        while(1) {
-        	URB_Status = HCD_GetURB_State(pdev, pep->hcNumOut);
-        	if(URB_Status == URB_DONE) {
-        		//STM_EVAL_LEDToggle(LED1);
-				//printf("\nGetDevDesc - Setup Packet Out.");
-				break;
-        	} else if (URB_Status == URB_ERROR) {
-        		if(err_cnt > 1)
-        			return USB_ERROR_FailGetDevDescr;
-        		err_cnt++;
-        		printf("\nURB_ERR %d times, try again", err_cnt);
-        		URB_Status = URB_IDLE;
-        		goto TryAgain;
-        	}
-        }
-/*
-        rcode = dispatchPkt(tokSETUP, ep, nak_limit); //dispatch packet
+
+        rcode = dispatchPkt(tokSETUP, ep, nak_limit, (uint8_t *)&setup_pkt, pep->hcNumOut); //dispatch packet
+        STM_EVAL_LEDToggle(LED1);
 
         if (rcode) //return HRSLT if not zero
-                return ( rcode);
-*/
+			return ( rcode);
+
         if (dataptr != NULL) //data stage, if present
         {
 			if (direction) //IN transfer
@@ -199,6 +179,9 @@ TryAgain:
 						//STM_EVAL_LEDToggle(LED1);
 						//printf("\nGetDevDesc - Data In");
 						break;
+					} else {
+						// errors
+						STM_EVAL_LEDToggle(LED1);
 					}
 				}
 				// Invoke callback function if inTransfer completed successfully and callback function pointer is specified
@@ -555,51 +538,52 @@ breakout:
 /* If bus timeout, re-sends up to USB_RETRY_LIMIT times                                             */
 
 /* return codes 0x00-0x0f are HRSLT( 0x00 being success ), 0xff means timeout                       */
-uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit) {
+uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t *data_p, uint8_t hcnum) {
         unsigned long timeout = millis() + USB_XFER_TIMEOUT;
         uint8_t tmpdata;
         uint8_t rcode = hrSUCCESS;
         uint8_t retry_count = 0;
         uint16_t nak_count = 0;
-#if 0
+        USB_OTG_CORE_HANDLE *pdev = coreConfig;
+
         while (timeout > millis()) {
-                regWr(rHXFR, (token | ep)); //launch the transfer
-                rcode = USB_ERROR_TRANSFER_TIMEOUT;
+			//regWr(rHXFR, (token | ep)); //launch the transfer
+            USBH_CtlSendSetup(pdev, data_p, hcnum);
 
-                while (timeout > millis()) //wait for transfer completion
-                {
-                        tmpdata = regRd(rHIRQ);
+			rcode = USB_ERROR_TRANSFER_TIMEOUT;
+			while (timeout > millis()) //wait for transfer completion
+			{
+				tmpdata = HCD_GetURB_State(pdev, hcnum);	//regRd(rHIRQ);
+				if (tmpdata != URB_IDLE) {	//& bmHXFRDNIRQ) {
+					//regWr(rHIRQ, bmHXFRDNIRQ); //clear the interrupt
+					rcode = 0x00;
+					break;
+				}
+			}
 
-                        if (tmpdata & bmHXFRDNIRQ) {
-                                regWr(rHIRQ, bmHXFRDNIRQ); //clear the interrupt
-                                rcode = 0x00;
-                                break;
-                        }//if( tmpdata & bmHXFRDNIRQ
+			//if (rcode != 0x00) //exit if timeout
+			//        return ( rcode);
 
-                }//while ( millis() < timeout
-
-                //if (rcode != 0x00) //exit if timeout
-                //        return ( rcode);
-
-                rcode = (regRd(rHRSL) & 0x0f); //analyze transfer result
-
-                switch (rcode) {
-                        case hrNAK:
-                                nak_count++;
-                                if (nak_limit && (nak_count == nak_limit))
-                                        return (rcode);
-                                break;
-                        case hrTIMEOUT:
-                                retry_count++;
-                                if (retry_count == USB_RETRY_LIMIT)
-                                        return (rcode);
-                                break;
-                        default:
-                                return (rcode);
-                }//switch( rcode
+            rcode = HCD_GetHCState(pdev, hcnum);	//(regRd(rHRSL) & 0x0f); //analyze transfer result
+			switch (rcode) {
+				case HC_NAK:	//hrNAK:
+					nak_count++;
+					if (nak_limit && (nak_count == nak_limit))
+						return (rcode);
+					break;
+//				case hrTIMEOUT:
+//					retry_count++;
+//					if (retry_count == USB_RETRY_LIMIT)
+//						return (rcode);
+//					break;
+				case HC_XFRC:
+					rcode = hrSUCCESS;
+				default:
+					return (rcode);
+			}
 
         }//while( timeout > millis()
-#endif
+
         return ( rcode);
 }
 
@@ -873,10 +857,10 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
         p->epinfo = &epInfo;
 
         p->lowspeed = lowspeed;
+        STM_EVAL_LEDToggle(LED1);
 
         // Get device descriptor
         rcode = getDevDescr(0, 0, sizeof (USB_DEVICE_DESCRIPTOR), (uint8_t*)buf);
-        STM_EVAL_LEDToggle(LED1);
         printf("\nGot 1st 18 bytes desc.");
 
         // Extract Max Packet Size from the device descriptor
@@ -908,11 +892,11 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
                 if (!devConfig[devConfigIndex]) continue; // no driver
                 if (devConfig[devConfigIndex]->GetAddress()) continue; // consumed
                 if (devConfig[devConfigIndex]->VIDPIDOK(vid, pid)) {
-                        rcode = AttemptConfig(devConfigIndex, parent, port, lowspeed);
-                        break;
+					rcode = AttemptConfig(devConfigIndex, parent, port, lowspeed);
+					break;
                 } else if (devConfig[devConfigIndex]->DEVCLASSOK(klass)) {
-                        rcode = AttemptConfig(devConfigIndex, parent, port, lowspeed);
-                        if (!rcode) break;
+					rcode = AttemptConfig(devConfigIndex, parent, port, lowspeed);
+					if (!rcode) break;
                 }
         }
 

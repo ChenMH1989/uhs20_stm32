@@ -183,15 +183,15 @@ public:
         };
 
         AddressPool& GetAddressPool() {
-                return(AddressPool&) addrPool;
+			return(AddressPool&) addrPool;
         };
 
         uint8_t RegisterDeviceClass(USBDeviceConfig *pdev) {
                 for(uint8_t i = 0; i < USB_NUMDEVICES; i++) {
-                        if(!devConfig[i]) {
-                                devConfig[i] = pdev;
-                                return 0;
-                        }
+					if(!devConfig[i]) {
+						devConfig[i] = pdev;
+						return 0;
+					}
                 }
                 return USB_ERROR_UNABLE_TO_REGISTER_DEVICE_CLASS;
         };
@@ -222,7 +222,7 @@ public:
         USBH_Status USBH_InterruptReceiveData(uint8_t *buff, uint8_t length, uint8_t hc_num);
         uint8_t inTransfer(uint8_t addr, uint8_t ep, uint16_t *nbytesptr, uint8_t* data);
         uint8_t outTransfer(uint8_t addr, uint8_t ep, uint16_t nbytes, uint8_t* data);
-        uint8_t dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit);
+        uint8_t dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t * data_p, uint8_t hcnum);
 
         void Task(USB_OTG_CORE_HANDLE *pdev);
 

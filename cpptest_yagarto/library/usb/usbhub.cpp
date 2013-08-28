@@ -36,7 +36,7 @@ bPollEnable(false) {
         epInfo[1].bmNakPower = USB_NAK_NOWAIT;
 
         if (pUsb)
-                pUsb->RegisterDeviceClass(this);
+			pUsb->RegisterDeviceClass(this);
 }
 
 uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
@@ -55,16 +55,16 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         //switch (bInitState) {
         //        case 0:
                         if (bAddress)
-                                return USB_ERROR_CLASS_INSTANCE_ALREADY_IN_USE;
+							return USB_ERROR_CLASS_INSTANCE_ALREADY_IN_USE;
 
                         // Get pointer to pseudo device with address 0 assigned
                         p = addrPool.GetUsbDevicePtr(0);
 
                         if (!p)
-                                return USB_ERROR_ADDRESS_NOT_FOUND_IN_POOL;
+							return USB_ERROR_ADDRESS_NOT_FOUND_IN_POOL;
 
                         if (!p->epinfo)
-                                return USB_ERROR_EPINFO_IS_NULL;
+							return USB_ERROR_EPINFO_IS_NULL;
 
                         // Save old pointer to EP_RECORD of address 0
                         oldep_ptr = p->epinfo;
@@ -83,50 +83,57 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
                         p->lowspeed = false;
 
                         if (!rcode)
-                                len = (buf[0] > 32) ? 32 : buf[0];
+							len = (buf[0] > 32) ? 32 : buf[0];
 
                         if (rcode) {
-                                // Restore p->epinfo
-                                p->epinfo = oldep_ptr;
-                                return rcode;
+							// Restore p->epinfo
+							p->epinfo = oldep_ptr;
+							return rcode;
                         }
 
                         // Extract device class from device descriptor
                         // If device class is not a hub return
                         if (((USB_DEVICE_DESCRIPTOR*)buf)->bDeviceClass != 0x09)
-                                return USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
+							return USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
 
                         // Allocate new address according to device class
                         bAddress = addrPool.AllocAddress(parent, (((USB_DEVICE_DESCRIPTOR*)buf)->bDeviceClass == 0x09) ? true : false, port);
 
                         if (!bAddress)
-                                return USB_ERROR_OUT_OF_ADDRESS_SPACE_IN_POOL;
+                        	return USB_ERROR_OUT_OF_ADDRESS_SPACE_IN_POOL;
 
                         // Extract Max Packet Size from the device descriptor
                         epInfo[0].maxPktSize = ((USB_DEVICE_DESCRIPTOR*)buf)->bMaxPacketSize0;
-
+                        epInfo[1].maxPktSize = epInfo[0].maxPktSize;
                         // Assign new address to the device
                         rcode = pUsb->setAddr(0, 0, bAddress);
 
                         if (rcode) {
-                                // Restore p->epinfo
-                                p->epinfo = oldep_ptr;
-                                addrPool.FreeAddress(bAddress);
-                                bAddress = 0;
-                                return rcode;
+							// Restore p->epinfo
+							p->epinfo = oldep_ptr;
+							addrPool.FreeAddress(bAddress);
+							bAddress = 0;
+							return rcode;
                         }
+                        /* modify control channels to update device address */
+                        USB::USBH_Modify_Channel (pUsb->coreConfig, epInfo[0].hcNumIn, bAddress, 0, 0, 0);
+                        USB::USBH_Modify_Channel (pUsb->coreConfig, epInfo[0].hcNumOut, bAddress, 0, 0, 0);
 
-                        //USBTRACE2("\r\nHub address: ", bAddress );
+                        printf("\r\nHub address:0x%x", bAddress);
                     //TODO: the hcNumOut/hcNumIn are flushed by below restore code.
                     //should be careful if next xfer will use correct hc.
                         // Restore p->epinfo
                         p->epinfo = oldep_ptr;
 
+                        // we need to assign hcnumber for this new bAddress(0x41)
+                        p = addrPool.GetUsbDevicePtr(bAddress);
+                        p->epinfo->hcNumber = oldep_ptr->hcNumber;
+
                         if (len)
-                                rcode = pUsb->getDevDescr(bAddress, 0, len, (uint8_t*)buf);
+							rcode = pUsb->getDevDescr(bAddress, 0, len, (uint8_t*)buf);
 
                         if (rcode)
-                                goto FailGetDevDescr;
+							goto FailGetDevDescr;
 
                         // Assign epInfo to epinfo pointer
                         rcode = pUsb->setEpInfoEntry(bAddress, 2, epInfo);
@@ -141,7 +148,7 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
                         rcode = GetHubDescriptor(0, 8, buf);
 
                         if (rcode)
-                                goto FailGetHubDescr;
+							goto FailGetHubDescr;
 
                         // Save number of ports for future use
                         bNbrPorts = ((HubDescriptor*)buf)->bNbrPorts;
@@ -153,11 +160,11 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
                         rcode = pUsb->getConfDescr(bAddress, 0, 8, 0, buf);
 
                         if (!rcode) {
-                                cd_len = ((USB_CONFIGURATION_DESCRIPTOR*)buf)->wTotalLength;
-                                rcode = pUsb->getConfDescr(bAddress, 0, cd_len, 0, buf);
+							cd_len = ((USB_CONFIGURATION_DESCRIPTOR*)buf)->wTotalLength;
+							rcode = pUsb->getConfDescr(bAddress, 0, cd_len, 0, buf);
                         }
                         if (rcode)
-                                goto FailGetConfDescr;
+							goto FailGetConfDescr;
 
                         // The following code is of no practical use in real life applications.
                         // It only intended for the usb protocol sniffer to properly parse hub-class requests.
@@ -167,24 +174,34 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
                         rcode = pUsb->getConfDescr(bAddress, 0, buf[0], 0, buf2);
 
                         if (rcode)
-                                goto FailGetConfDescr;
+							goto FailGetConfDescr;
                 }
 
                         // Set Configuration Value
                         rcode = pUsb->setConf(bAddress, 0, buf[5]);
 
                         if (rcode)
-                                goto FailSetConfDescr;
+							goto FailSetConfDescr;
 
         //                bInitState = 3;
 
         //        case 3:
                         // Power on all ports
                         for (uint8_t j = 1; j <= bNbrPorts; j++)
-                                SetPortFeature(HUB_FEATURE_PORT_POWER, j, 0); //HubPortPowerOn(j);
+							SetPortFeature(HUB_FEATURE_PORT_POWER, j, 0); //HubPortPowerOn(j);
 
                         pUsb->SetHubPreMask();
                         bPollEnable = true;
+
+                        epInfo[1].epAddr = buf[20];
+                        epInfo[1].hcNumIn = USB::USBH_Alloc_Channel(pUsb->coreConfig, epInfo[1].epAddr);
+                		printf("\nAllocated hc num_in = %d (EP_TYPE_INTR)", epInfo[1].hcNumIn);
+
+                        // Assign epInfo to epinfo pointer
+                        rcode = pUsb->setEpInfoEntry(bAddress, 2, epInfo);
+                        USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[1].hcNumIn, bAddress, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_INTR, epInfo[1].maxPktSize);
+                        pUsb->coreConfig->host.hc[epInfo[1].hcNumIn].toggle_in ^= 0x1;
+
         //                bInitState = 0;
         //}
         //bInitState = 0;
@@ -229,11 +246,11 @@ uint8_t USBHub::Poll(USB_OTG_CORE_HANDLE *pdev) {
         uint8_t rcode = 0;
 
         if (!bPollEnable)
-                return 0;
+			return 0;
 
         if (qNextPollTime <= millis()) {
-                rcode = CheckHubStatus();
-                qNextPollTime = millis() + 100;
+			rcode = CheckHubStatus();
+			qNextPollTime = millis() + 100;
         }
         return rcode;
 }
@@ -243,10 +260,16 @@ uint8_t USBHub::CheckHubStatus() {
         uint8_t buf[8];
         uint16_t read = 1;
 
-        rcode = pUsb->inTransfer(bAddress, 1, &read, buf);
+        rcode = pUsb->inTransfer(bAddress, epInfo[1].epAddr, &read, buf);
+//todo: i need to do re-factoring for this inTransfer function.
+        rcode = USB::HCD_GetHCState(pUsb->coreConfig, epInfo[1].hcNumIn);
+        if(rcode == HC_XFRC)
+        	rcode = 0;
+        else
+        	STM_EVAL_LEDToggle(LED1);
 
         if (rcode)
-                return rcode;
+			return rcode;
 
         //if (buf[0] & 0x01) // Hub Status Change
         //{
@@ -260,23 +283,23 @@ uint8_t USBHub::CheckHubStatus() {
         //        }
         //}
         for (uint8_t port = 1, mask = 0x02; port < 8; mask <<= 1, port++) {
-                if (buf[0] & mask) {
-                        HubEvent evt;
-                        evt.bmEvent = 0;
+			if (buf[0] & mask) {
+				HubEvent evt;
+				evt.bmEvent = 0;
 
-                        rcode = GetPortStatus(port, 4, evt.evtBuff);
+				rcode = GetPortStatus(port, 4, evt.evtBuff);
 
-                        if (rcode)
-                                continue;
+				if (rcode)
+					continue;
 
-                        rcode = PortStatusChange(port, evt);
+				rcode = PortStatusChange(port, evt);
 
-                        if (rcode == HUB_ERROR_PORT_HAS_BEEN_RESET)
-                                return 0;
+				if (rcode == HUB_ERROR_PORT_HAS_BEEN_RESET)
+					return 0;
 
-                        if (rcode)
-                                return rcode;
-                }
+				if (rcode)
+					return rcode;
+			}
         } // for
 
         for (uint8_t port = 1; port <= bNbrPorts; port++) {
@@ -286,10 +309,10 @@ uint8_t USBHub::CheckHubStatus() {
                 rcode = GetPortStatus(port, 4, evt.evtBuff);
 
                 if (rcode)
-                        continue;
+					continue;
 
                 if ((evt.bmStatus & bmHUB_PORT_STATE_CHECK_DISABLED) != bmHUB_PORT_STATE_DISABLED)
-                        continue;
+					continue;
 
                 // Emulate connection event for the port
                 evt.bmChange |= bmHUB_PORT_STATUS_C_PORT_CONNECTION;
