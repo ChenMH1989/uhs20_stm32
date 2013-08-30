@@ -230,16 +230,23 @@ Fail:
 }
 
 uint8_t USBHub::Release() {
-        pUsb->GetAddressPool().FreeAddress(bAddress);
+	if(epInfo[1].hcNumber != 0) {	// HC0&HC1 are taken by control pipe.
+		USB::USB_OTG_HC_Halt(pUsb->coreConfig, epInfo[1].hcNumIn);
+		USB::USBH_Free_Channel(pUsb->coreConfig, epInfo[1].hcNumIn);
+	}
+	//todo: we need un-install epInfo either.
+	epInfo[1].hcNumber = 0;
 
-        if (bAddress == 0x41)
-                pUsb->SetHubPreMask();
+	pUsb->GetAddressPool().FreeAddress(bAddress);
 
-        bAddress = 0;
-        bNbrPorts = 0;
-        qNextPollTime = 0;
-        bPollEnable = false;
-        return 0;
+	if (bAddress == 0x41)
+		pUsb->SetHubPreMask();
+
+	bAddress = 0;
+	bNbrPorts = 0;
+	qNextPollTime = 0;
+	bPollEnable = false;
+	return 0;
 }
 
 uint8_t USBHub::Poll(USB_OTG_CORE_HANDLE *pdev) {
@@ -262,12 +269,13 @@ uint8_t USBHub::CheckHubStatus() {
 
         rcode = pUsb->inTransfer(bAddress, epInfo[1].epAddr, &read, buf);
 //todo: i need to do re-factoring for this inTransfer function.
+		delay_us(100);
         rcode = USB::HCD_GetHCState(pUsb->coreConfig, epInfo[1].hcNumIn);
-        if(rcode == HC_XFRC)
+        if(rcode == HC_XFRC) {
         	rcode = 0;
-        else
+        } else {
         	STM_EVAL_LEDToggle(LED1);
-
+        }
         if (rcode)
 			return rcode;
 

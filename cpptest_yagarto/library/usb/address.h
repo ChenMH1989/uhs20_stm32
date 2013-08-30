@@ -139,7 +139,7 @@ class AddressPoolImpl : public AddressPool {
         void FreeAddressByIndex(uint8_t index) {
                 // Zerro field is reserved and should not be affected
                 if(index == 0)
-                        return;
+					return;
 
                 // If a hub was switched off all port addresses should be freed
                 if(((UsbDeviceAddress*) & thePool[index].address)->bmHub == 1) {
@@ -252,8 +252,8 @@ public:
         virtual void FreeAddress(uint8_t addr) {
                 // if the root hub is disconnected all the addresses should be initialized
                 if(addr == 0x41) {
-                        InitAllAddresses();
-                        return;
+					InitAllAddresses();
+					return;
                 }
                 uint8_t index = FindAddressIndex(addr);
                 FreeAddressByIndex(index);

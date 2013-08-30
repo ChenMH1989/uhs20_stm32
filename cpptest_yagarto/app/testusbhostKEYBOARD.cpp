@@ -19,7 +19,7 @@ void KbdRptParser::PrintKey(uint8_t m, uint8_t key)
     printf((mod.bmLeftAlt    == 1) ? "A" : " ");
     printf((mod.bmLeftGUI    == 1) ? "G" : " ");
 
-    printf(" >");
+    printf("\n >");
     //D_PrintHex<uint8_t>(key, 0x80);
     printf("%x", key);
     printf("< ");

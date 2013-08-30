@@ -263,7 +263,7 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
 			return USB_ERROR_ADDRESS_NOT_FOUND_IN_POOL;
 
         if(!p->epinfo) {
-                USBTRACE("epinfo\r\n");
+			USBTRACE("epinfo\r\n");
 			return USB_ERROR_EPINFO_IS_NULL;
         }
 
@@ -354,7 +354,6 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
 					HID_BOOT_INTF_SUBCLASS,
 					BOOT_PROTOCOL,
 					CP_MASK_COMPARE_ALL> confDescrParser(this);
-
 			rcode = pUsb->getConfDescr(bAddress, 0, i, &confDescrParser);
 
 			if(bNumEP > 1)
@@ -479,19 +478,21 @@ void HIDBoot<BOOT_PROTOCOL>::EndpointXtract(uint8_t conf, uint8_t iface, uint8_t
 
 template <const uint8_t BOOT_PROTOCOL>
 uint8_t HIDBoot<BOOT_PROTOCOL>::Release() {
-        pUsb->GetAddressPool().FreeAddress(bAddress);
+	if(epInfo[1].hcNumber != 0) {	// HC0&HC1 are taken by control pipe.
+		USB::USB_OTG_HC_Halt(pUsb->coreConfig, epInfo[1].hcNumIn);
+		USB::USBH_Free_Channel(pUsb->coreConfig, epInfo[1].hcNumIn);
+	}
+	//todo: we need uninstall epInfo either.
+	epInfo[1].hcNumber = 0;
 
-        bConfNum = 0;
-        bIfaceNum = 0;
-        bNumEP = 1;
-        bAddress = 0;
-        qNextPollTime = 0;
-        bPollEnable = false;
-//todo: what are you doing here?
-        USB::USB_OTG_HC_Halt(pUsb->coreConfig, epInfo[1].hcNumIn);
-        USB::USBH_Free_Channel(pUsb->coreConfig, epInfo[1].hcNumIn);
-        epInfo[1].hcNumIn = 0;
-        return 0;
+	pUsb->GetAddressPool().FreeAddress(bAddress);
+
+	bConfNum = 0;
+	bIfaceNum = 0;
+	bNumEP = 1;
+	bAddress = 0;
+	qNextPollTime = 0;
+	bPollEnable = false;
 }
 
 template <const uint8_t BOOT_PROTOCOL>
@@ -507,13 +508,12 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Poll(USB_OTG_CORE_HANDLE *pdev) {
 
 		const uint8_t const_buff_len = 16;
 		uint8_t buf[const_buff_len];
-
+		STM_EVAL_LEDToggle(LED1);
 		uint16_t read = (uint16_t) epInfo[epInterruptInIndex].maxPktSize;
 		rcode = pUsb->inTransfer(bAddress, epInfo[epInterruptInIndex].epAddr, &read, buf);
-
+/*
 		delay_us(100);
 		rcode = USB::HCD_GetHCState(pdev, epInfo[epInterruptInIndex].hcNumIn);
-/*
 		while(1) {
 			URB_Status = USB::HCD_GetURB_State(pdev, epInfo[epInterruptInIndex].hcNumIn);
 			if(URB_Status == URB_DONE) {
@@ -525,29 +525,16 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Poll(USB_OTG_CORE_HANDLE *pdev) {
 			}
 		}
 */
-		//if(rcode != HC_XFRC && rcode != HC_DATATGLERR) {
+		if(rcode) {
 			if(rcode != HC_NAK) {
 				STM_EVAL_LEDToggle(LED1);
 				printf("\nPoll:%d <- ", rcode);
-			} else
-				return rcode;
-		//}
-		//STM_EVAL_LEDToggle(LED1);
-		if(rcode == HC_DATATGLERR) {
-	        //pdev->host.hc[epInfo[epInterruptInIndex].hcNumIn].toggle_in ^= 0x1;
-	        return rcode;
+			}
+			return rcode;
 		}
-/* Friday, mask because I changed the inTransfer for msc class
-		else if (rcode == HC_XFRC) {
-			EpInfo *pep = NULL;
-			pep = pUsb->getEpInfoEntry(bAddress, epInfo[epInterruptInIndex].epAddr);
-			pep->bmRcvToggle ^= 0x1;
-		}
-*/
-		//if (read)
-		//	printf("\n");
-		for (uint8_t i=0; i<read; i++)
-			printf("%d ", buf[i]);
+
+		//for (uint8_t i=0; i<read; i++)
+		//	printf("%d ", buf[i]);
 
 
 		if(pRptParser)

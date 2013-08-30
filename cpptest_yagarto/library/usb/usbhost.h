@@ -975,10 +975,9 @@ USBH_Status STM32F2< SS, INTR >::USBH_CtlSendSetup(USB_OTG_CORE_HANDLE *pdev,
 template< typename SS, typename INTR >
 uint32_t STM32F2< SS, INTR >::HCD_SubmitRequest (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num)
 {
-
-  pdev->host.URB_State[hc_num] = URB_IDLE;
-  pdev->host.hc[hc_num].xfer_count = 0 ;
-  return USB_OTG_HC_StartXfer(pdev, hc_num);
+	pdev->host.URB_State[hc_num] = URB_IDLE;
+	pdev->host.hc[hc_num].xfer_count = 0 ;
+	return USB_OTG_HC_StartXfer(pdev, hc_num);
 }
 
 

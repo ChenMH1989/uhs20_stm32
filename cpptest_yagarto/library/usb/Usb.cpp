@@ -22,12 +22,12 @@ e-mail   :  support@circuitsathome.com
 #include "Usb.h"
 #include "bsp.h"
 
-static uint32_t usb_error = 0;
-static uint32_t usb_task_state;
+static uint8_t usb_error = 0;
+static uint8_t usb_task_state;
 
 /* constructor */
 USB::USB(USB_OTG_CORE_HANDLE *pDev) : STM32F207(pDev), bmHubPre(0) {
-        usb_task_state = 0x111;//USB_DETACHED_SUBSTATE_INITIALIZE; //set up state machine
+        usb_task_state = USB_DETACHED_SUBSTATE_INITIALIZE; //set up state machine
         init();
 }
 
@@ -155,9 +155,7 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
 
 //        bytesWr(rSUDFIFO, 8, (uint8_t*) & setup_pkt); //transfer to setup packet FIFO
 
-
-        rcode = dispatchPkt(tokSETUP, ep, nak_limit, (uint8_t *)&setup_pkt, pep->hcNumOut); //dispatch packet
-        STM_EVAL_LEDToggle(LED1);
+        rcode = dispatchPkt(tokSETUP, ep, nak_limit, (uint8_t *)&setup_pkt, sizeof(setup_pkt), pep->hcNumOut); //dispatch packet
 
         if (rcode) //return HRSLT if not zero
 			return ( rcode);
@@ -167,12 +165,12 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
 			if (direction) //IN transfer
 			{
 				uint16_t left = total;
-
+#if 1
 				//pep->bmRcvToggle = 1; //bmRCVTOG1;
 				pdev->host.hc[pep->hcNumIn].toggle_in = 0x1;
 				uint16_t read = total;	//nbytes;
 				rcode = InTransfer(pep, nak_limit, &read, dataptr);
-				//STM_EVAL_LEDToggle(LED1);
+#if 0
 				while(1) {
 					URB_Status = HCD_GetURB_State(pdev, pep->hcNumIn);
 					if(URB_Status == URB_DONE) {
@@ -184,16 +182,18 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
 						STM_EVAL_LEDToggle(LED1);
 					}
 				}
+#endif
 				// Invoke callback function if inTransfer completed successfully and callback function pointer is specified
 				if (!rcode && p)
 					((USBReadParser*)p)->Parse(read, dataptr, total - left);
 
-#if 0
+#else
 				while (left) {
 					// Bytes read into buffer
 					uint16_t read = nbytes;
 					//uint16_t read = (left<nbytes) ? left : nbytes;
 
+					pdev->host.hc[pep->hcNumIn].toggle_in = 0x1;
 					rcode = InTransfer(pep, nak_limit, &read, dataptr);
 
 /*
@@ -208,17 +208,16 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
 
 					// Invoke callback function if inTransfer completed successfully and callback function pointer is specified
 					if (!rcode && p)
-							((USBReadParser*)p)->Parse(read, dataptr, total - left);
+						((USBReadParser*)p)->Parse(read, dataptr, total - left);
 
 					left -= read;
 
-
 					if (read < nbytes)
 						break;
-
 				}
 #endif
-			} else {	//OUT transfer
+                } else //OUT transfer
+                {
 					//pep->bmSndToggle = 1; //bmSNDTOG1;
 					pdev->host.hc[pep->hcNumOut].toggle_out = 0x1;
 					rcode = OutTransfer(pep, nak_limit, nbytes, dataptr);
@@ -227,27 +226,7 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
 				return ( rcode);
         }
         // Status stage
-        //return dispatchPkt((direction) ? tokOUTHS : tokINHS, ep, nak_limit); //GET if direction
-        uint32_t hc_num = 0;
-        if(direction) {
-        	hc_num = pep->hcNumOut;
-        	pdev->host.hc[hc_num].toggle_out ^= 0x1;
-        	rcode = OutTransfer(pep, nak_limit, 0, 0);
-		} else {
-			hc_num = pep->hcNumIn;
-			pdev->host.hc[hc_num].toggle_in = 0x1;
-			rcode = InTransfer(pep, nak_limit, 0, 0);
-		}
-        while(1) {
-			URB_Status = HCD_GetURB_State(pdev, hc_num);
-			if(URB_Status == URB_DONE) {
-				//STM_EVAL_LEDToggle(LED1);
-				//printf("\nGetDevDesc - Status Out");
-				break;
-			}
-        }
-        return rcode;
-
+        return dispatchPkt((direction) ? tokOUTHS : tokINHS, ep, nak_limit, NULL, 0, (direction) ? pep->hcNumOut : pep->hcNumIn);	//GET if direction
 }
 
 /**
@@ -325,82 +304,55 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 	//printf("Requesting %i bytes ", nbytes);
 	uint8_t maxpktsize = pep->maxPktSize;
 	USB_OTG_CORE_HANDLE *pdev = coreConfig;
+	uint32_t hcnum = pep->hcNumIn;	//pdev->host.hc_num_in;
 
-#if 0
+#if 0	// get all packets via rx fifo
+	pdev->host.hc[hcnum].data_pid = (pdev->host.hc[hcnum].toggle_in) ? HC_PID_DATA1 : HC_PID_DATA0;
+	pdev->host.hc[hcnum].ep_is_in = 1;
+	pdev->host.hc[hcnum].xfer_buff = data;
+	pdev->host.hc[hcnum].xfer_len = nbytes;
 
+	HCD_SubmitRequest(pdev, hcnum);
+#else	// get one packet per transfer.
+	//*nbytesptr = 0;	// 1. means how many bytes was received.
+						// 2. on stm32, we receive all data at once, so we don't need to count this var.
 
-	pdev->host.hc[hc_num].ep_is_in = 1;
-	pdev->host.hc[hc_num].data_pid = HC_PID_DATA1;
-	pdev->host.hc[hc_num].xfer_buff = data;	//buff;
-	pdev->host.hc[hc_num].xfer_len = nbytes;	//length;
-
-	HCD_SubmitRequest(pdev, hc_num);
-#else
-	//*nbytesptr = 0;
-	uint32_t hc_num = pep->hcNumIn;	//pdev->host.hc_num_in;
-
-	//regWr(rHCTL, (pep->bmRcvToggle) ? bmRCVTOG1 : bmRCVTOG0); //set toggle value
-	pdev->host.hc[hc_num].data_pid = (pdev->host.hc[hc_num].toggle_in) ? HC_PID_DATA1 : HC_PID_DATA0;
-	pdev->host.hc[hc_num].ep_is_in = 1;
-	pdev->host.hc[hc_num].xfer_buff = data;	//buff;
-	pdev->host.hc[hc_num].xfer_len = nbytes;	//length;
-
-	HCD_SubmitRequest(pdev, hc_num);
-#if 0
 	while (1) // use a 'return' to exit this loop
 	{
-		HCD_SubmitRequest(pdev, hc_num);
-		while(1) {
-			URB_STATE URB_Status = HCD_GetURB_State(pdev, hc_num);
-			if(URB_Status != URB_IDLE) {
-		//		STM_EVAL_LEDToggle(LED1);
-				break;
-			} else {
-				rcode = HCD_GetHCState(pdev, hc_num);
-				if(rcode == HC_NAK)
-					break;
-			}
-		}
-		rcode = HCD_GetHCState(pdev, hc_num);	//dispatchPkt(tokIN, pep->epAddr, nak_limit); //IN packet to EP-'endpoint'. Function takes care of NAKS.
-		if (rcode == HC_DATATGLERR) { //hrTOGERR) {
+		rcode = dispatchPkt(tokIN, pep->epAddr, nak_limit, data, nbytes, hcnum); //IN packet to EP-'endpoint'. Function takes care of NAKS.
+		if (rcode == hrTOGERR) {
 			// yes, we flip it wrong here so that next time it is actually correct!
-			pep->bmRcvToggle ^= 0x1;	//= (regRd(rHRSL) & bmSNDTOGRD) ? 0 : 1;
-			pdev->host.hc[hc_num].data_pid = (pep->bmRcvToggle) ? HC_PID_DATA1 : HC_PID_DATA0;
-			//regWr(rHCTL, (pep->bmRcvToggle) ? bmRCVTOG1 : bmRCVTOG0); //set toggle value
+//			pep->bmRcvToggle = (regRd(rHRSL) & bmSNDTOGRD) ? 0 : 1;
+//			regWr(rHCTL, (pep->bmRcvToggle) ? bmRCVTOG1 : bmRCVTOG0); //set toggle value
+			printf("\nInXfer - toggle err");	// will meet toggle error here? todo: sometimes once unplugged device, there is small chance that Poll still works here.
 			continue;
 		}
-
-		if(rcode == HC_XFRC) {
-			//pep->bmRcvToggle ^= 0x1;
-			break;
-		}
 		if (rcode) {
-			printf(">>>>>>>> Problem! dispatchPkt %d\r\n", rcode);
+			//printf(">>>>>>>> Problem! dispatchPkt %2.2x\r\n", rcode);
 			break; //should be 0, indicating ACK. Else return error code.
 		}
-
 		/* check for RCVDAVIRQ and generate error if not present */
 		/* the only case when absence of RCVDAVIRQ makes sense is when toggle error occurred. Need to add handling for that */
 //		if ((regRd(rHIRQ) & bmRCVDAVIRQ) == 0) {
-//				//printf(">>>>>>>> Problem! NO RCVDAVIRQ!\r\n");
-//				rcode = 0xf0; //receive error
-//				break;
+			//printf(">>>>>>>> Problem! NO RCVDAVIRQ!\r\n");
+//			rcode = 0xf0; //receive error
+//			break;
 //		}
 //		pktsize = regRd(rRCVBC); //number of received bytes
 		//printf("Got %i bytes \r\n", pktsize);
 		// This would be OK, but...
 		//assert(pktsize <= nbytes);
 //		if (pktsize > nbytes) {
-				// This can happen. Use of assert on Arduino locks up the Arduino.
-				// So I will trim the value, and hope for the best.
-				//printf(">>>>>>>> Problem! Wanted %i bytes but got %i.\r\n", nbytes, pktsize);
-//				pktsize = nbytes;
+			// This can happen. Use of assert on Arduino locks up the Arduino.
+			// So I will trim the value, and hope for the best.
+			//printf(">>>>>>>> Problem! Wanted %i bytes but got %i.\r\n", nbytes, pktsize);
+//			pktsize = nbytes;
 //		}
 
 //		int16_t mem_left = (int16_t)nbytes - *((int16_t*)nbytesptr);
 
 //		if (mem_left < 0)
-//				mem_left = 0;
+//			mem_left = 0;
 
 //		data = bytesRd(rRCVFIFO, ((pktsize > mem_left) ? mem_left : pktsize), data);
 
@@ -410,19 +362,18 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 		/* The transfer is complete under two conditions:           */
 		/* 1. The device sent a short packet (L.T. maxPacketSize)   */
 		/* 2. 'nbytes' have been transferred.                       */
-//		if ((pktsize < maxpktsize) || (*nbytesptr >= nbytes)) // have we transferred 'nbytes' bytes?
-//		{
-				// Save toggle value
-//				pep->bmRcvToggle = ((regRd(rHRSL) & bmRCVTOGRD)) ? 1 : 0;
-				//printf("\r\n");
-//				rcode = 0;
-//				break;
-//		} // if
+		//if ((pktsize < maxpktsize) || (*nbytesptr >= nbytes)) // have we transferred 'nbytes' bytes?
+		{	// thanks to large fifo on stm32, we don't need packet by packet handling.
+			// Save toggle value
+			// the toggle is flipped at interrupt handler.
+			//pep->bmRcvToggle = ((regRd(rHRSL) & bmRCVTOGRD)) ? 1 : 0;
+			//printf("\r\n");
+			rcode = 0;
+			break;
+		} // if
 	} //while( 1 )
-
-#endif
-#endif
-	return(rcode);
+#endif		
+	return ( rcode);
 }
 
 /* OUT transfer to arbitrary endpoint. Handles multiple packets if necessary. Transfers 'nbytes' bytes. */
@@ -454,27 +405,27 @@ uint8_t USB::OutTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t nbytes, uint8
 
 #if 1
 	USB_OTG_CORE_HANDLE *pdev = coreConfig;
-	uint32_t hc_num = pep->hcNumOut;
-	pdev->host.hc[hc_num].ep_is_in = 0;
-	pdev->host.hc[hc_num].xfer_buff = data; //buff;
-	pdev->host.hc[hc_num].xfer_len = nbytes;	//length;
+	uint32_t hcnum = pep->hcNumOut;
+	pdev->host.hc[hcnum].ep_is_in = 0;
+	pdev->host.hc[hcnum].xfer_buff = data; //buff;
+	pdev->host.hc[hcnum].xfer_len = nbytes;	//length;
 
 	if(nbytes == 0)
 	{ /* For Status OUT stage, Length==0, Status Out PID = 1 */
-		pdev->host.hc[hc_num].toggle_out = 1;
+		pdev->host.hc[hcnum].toggle_out = 1;
 	}
 
 	/* Set the Data Toggle bit as per the Flag */
-	if ( pdev->host.hc[hc_num].toggle_out == 0)
+	if ( pdev->host.hc[hcnum].toggle_out == 0)
 	{ /* Put the PID 0 */
-		pdev->host.hc[hc_num].data_pid = HC_PID_DATA0;
+		pdev->host.hc[hcnum].data_pid = HC_PID_DATA0;
 	}
 	else
 	{ /* Put the PID 1 */
-		pdev->host.hc[hc_num].data_pid = HC_PID_DATA1 ;
+		pdev->host.hc[hcnum].data_pid = HC_PID_DATA1 ;
 	}
 
-	HCD_SubmitRequest (pdev, hc_num);
+	HCD_SubmitRequest (pdev, hcnum);
 #else
         unsigned long timeout = millis() + USB_XFER_TIMEOUT;
 
@@ -538,17 +489,41 @@ breakout:
 /* If bus timeout, re-sends up to USB_RETRY_LIMIT times                                             */
 
 /* return codes 0x00-0x0f are HRSLT( 0x00 being success ), 0xff means timeout                       */
-uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t *data_p, uint8_t hcnum) {
+uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t *data_p = NULL, uint16_t nbytes = 0, uint8_t hcnum = 0) {
         unsigned long timeout = millis() + USB_XFER_TIMEOUT;
         uint8_t tmpdata;
         uint8_t rcode = hrSUCCESS;
         uint8_t retry_count = 0;
         uint16_t nak_count = 0;
         USB_OTG_CORE_HANDLE *pdev = coreConfig;
+        uint8_t pid = 0;
 
         while (timeout > millis()) {
 			//regWr(rHXFR, (token | ep)); //launch the transfer
-            USBH_CtlSendSetup(pdev, data_p, hcnum);
+        	if(token == tokSETUP) {
+				USBH_CtlSendSetup(pdev, data_p, hcnum);
+        	} else {
+        		if(token == tokOUTHS) {
+        			pdev->host.hc[hcnum].toggle_out = 0x1;
+        			pdev->host.hc[hcnum].ep_is_in = 0;
+        			pid = HC_PID_DATA1;
+        		} else if (token == tokINHS) {
+        			pdev->host.hc[hcnum].toggle_in = 0x1;
+        			pdev->host.hc[hcnum].ep_is_in = 1;
+        			pid = HC_PID_DATA1;
+        		} else if (token == tokIN){
+        			pdev->host.hc[hcnum].ep_is_in = 1;
+        			pid = (pdev->host.hc[hcnum].toggle_in)? HC_PID_DATA1 : HC_PID_DATA0;
+        		} else {
+        			pdev->host.hc[hcnum].ep_is_in = 0;
+        			pid = (pdev->host.hc[hcnum].toggle_out)? HC_PID_DATA1 : HC_PID_DATA0;
+        		}
+    			pdev->host.hc[hcnum].data_pid = pid;
+    			pdev->host.hc[hcnum].xfer_buff = data_p;
+    			pdev->host.hc[hcnum].xfer_len = nbytes;
+
+        		HCD_SubmitRequest(pdev, hcnum);
+        	}
 
 			rcode = USB_ERROR_TRANSFER_TIMEOUT;
 			while (timeout > millis()) //wait for transfer completion
@@ -566,7 +541,7 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
 
             rcode = HCD_GetHCState(pdev, hcnum);	//(regRd(rHRSL) & 0x0f); //analyze transfer result
 			switch (rcode) {
-				case HC_NAK:	//hrNAK:
+				case HC_NAK:	//hrNAK: todo: if timeout above with nak, we need to consider the next xfer.
 					nak_count++;
 					if (nak_limit && (nak_count == nak_limit))
 						return (rcode);
@@ -632,8 +607,8 @@ void USB::Task(USB_OTG_CORE_HANDLE *pdev) //USB state machine
 				init();
 
 				for (uint8_t i = 0; i < USB_NUMDEVICES; i++)
-						if (devConfig[i])
-								rcode = devConfig[i]->Release();
+					if (devConfig[i])
+							rcode = devConfig[i]->Release();
 
 				usb_task_state = USB_DETACHED_SUBSTATE_WAIT_FOR_DEVICE;
 				break;
@@ -830,14 +805,18 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
         epInfo.epAttribs = 0;
         epInfo.bmNakPower = USB_NAK_MAX_POWER;
 		// assume:
-		// host channel number (hc_num) = 0
-		// device address = 0
-		// endpoint adress (ep_addr) = 0 (for control xfer)
+		// HC0 for control - out
+        // HC1 for control - in
+        uint8_t hcnum = USBH_GetFreeChannel(pdev);
+        if(hcnum > 1) {
+        	USBH_Free_Channel(pdev, epInfo.hcNumOut);
+        	USBH_Free_Channel(pdev, epInfo.hcNumIn);
+        }
 		epInfo.hcNumOut = USBH_Alloc_Channel(pdev, 0x00);	// ep_addr = 0
 		epInfo.hcNumIn = USBH_Alloc_Channel(pdev, 0x80);
-		printf("\nAllocated hc num_out = %d (0), num_in = %d (1)", epInfo.hcNumOut, epInfo.hcNumIn);
 		USBH_Open_Channel(pdev, epInfo.hcNumOut, 0x0, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_CTRL, 0x8);
-		USBH_Open_Channel(pdev, epInfo.hcNumIn,	0x0, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_CTRL, 0x40);
+		USBH_Open_Channel(pdev, epInfo.hcNumIn,	0x0, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_CTRL, 0x8);
+		printf("\nControl Pipe: out = %d (0), in = %d (1)", epInfo.hcNumOut, epInfo.hcNumIn);
 
         delay_ms(1000);
         AddressPool &addrPool = GetAddressPool();
@@ -860,8 +839,8 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
         STM_EVAL_LEDToggle(LED1);
 
         // Get device descriptor
-        rcode = getDevDescr(0, 0, sizeof (USB_DEVICE_DESCRIPTOR), (uint8_t*)buf);
-        printf("\nGot 1st 18 bytes desc.");
+        rcode = getDevDescr(0, 0, 8, (uint8_t*)buf);	// 8 should be enough, sizeof (USB_DEVICE_DESCRIPTOR)
+        printf("\nGot 1st 8 bytes desc.");
 
         // Extract Max Packet Size from the device descriptor
         epInfo.maxPktSize = (uint8_t)((USB_DEVICE_DESCRIPTOR*)buf)->bMaxPacketSize0;
@@ -882,6 +861,8 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
 
         //if (!bAddress)
         //        return USB_ERROR_OUT_OF_ADDRESS_SPACE_IN_POOL;
+        rcode = getDevDescr(0, 0, sizeof(USB_DEVICE_DESCRIPTOR), (uint8_t*)buf);
+        printf("\nGot 2nd 18 bytes desc.");
 
         uint16_t vid = (uint16_t)((USB_DEVICE_DESCRIPTOR*)buf)->idVendor;
         uint16_t pid = (uint16_t)((USB_DEVICE_DESCRIPTOR*)buf)->idProduct;

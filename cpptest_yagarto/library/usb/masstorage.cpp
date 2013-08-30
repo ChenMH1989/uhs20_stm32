@@ -466,7 +466,6 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 					printf("\nInquiry errcode=%d", rcode);
                 } else {
                         uint8_t tries = 0xf0;
-                        printf("\nFriday, lets stop at here.");
                         while (rcode = TestUnitReady(lun)) {
 							if (rcode == 0x08) break; // break on no media, this is OK to do.
 							// try to lock media and spin up
@@ -605,9 +604,17 @@ void BulkOnly::EndpointXtract(uint8_t conf, uint8_t iface, uint8_t alt, uint8_t 
  * @return
  */
 uint8_t BulkOnly::Release() {
-        ClearAllEP();
-        pUsb->GetAddressPool().FreeAddress(bAddress);
-        return 0;
+	if(epInfo[1].hcNumber != 0) {	// HC0&HC1 are taken by control pipe.
+		USB::USB_OTG_HC_Halt(pUsb->coreConfig, epInfo[1].hcNumIn);
+		USB::USBH_Free_Channel(pUsb->coreConfig, epInfo[1].hcNumIn);
+	}
+	if(epInfo[2].hcNumber != 0) {
+		USB::USB_OTG_HC_Halt(pUsb->coreConfig, epInfo[2].hcNumOut);
+		USB::USBH_Free_Channel(pUsb->coreConfig, epInfo[2].hcNumOut);
+	}
+	ClearAllEP();
+	pUsb->GetAddressPool().FreeAddress(bAddress);
+	return 0;
 }
 
 /**
