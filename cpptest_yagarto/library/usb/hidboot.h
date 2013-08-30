@@ -508,7 +508,6 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Poll(USB_OTG_CORE_HANDLE *pdev) {
 
 		const uint8_t const_buff_len = 16;
 		uint8_t buf[const_buff_len];
-		STM_EVAL_LEDToggle(LED1);
 		uint16_t read = (uint16_t) epInfo[epInterruptInIndex].maxPktSize;
 		rcode = pUsb->inTransfer(bAddress, epInfo[epInterruptInIndex].epAddr, &read, buf);
 /*
@@ -526,12 +525,13 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Poll(USB_OTG_CORE_HANDLE *pdev) {
 		}
 */
 		if(rcode) {
-			if(rcode != HC_NAK) {
+			if(rcode != hrNAK) {
 				STM_EVAL_LEDToggle(LED1);
 				printf("\nPoll:%d <- ", rcode);
 			}
 			return rcode;
 		}
+		STM_EVAL_LEDToggle(LED1);
 
 		//for (uint8_t i=0; i<read; i++)
 		//	printf("%d ", buf[i]);

@@ -76,7 +76,7 @@ void check_fatstatus(void) {
     current_state = Usb.getUsbTaskState();
 	if (current_state != last_state) {
 		if (UsbDEBUGlvl > 0x50)
-			printf(PSTR("USB state = 0x%x\r\n"), current_state);
+			printf(PSTR("\r\nUSB state = 0x%x"), current_state);
 		if (current_state == USB_STATE_RUNNING) {
 			fadeAmount = 30;
 		}

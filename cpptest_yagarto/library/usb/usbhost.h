@@ -157,7 +157,7 @@ public:
         static uint8_t USB_OTG_IsEvenFrame (USB_OTG_CORE_HANDLE *pdev);
         static uint32_t HCD_GetCurrentFrame (USB_OTG_CORE_HANDLE *pdev);
         static URB_STATE HCD_GetURB_State (USB_OTG_CORE_HANDLE *pdev , uint8_t ch_num);
-        static HC_STATUS HCD_GetHCState (USB_OTG_CORE_HANDLE *pdev,  uint8_t ch_num) ;
+        static uint8_t HCD_GetHCState (USB_OTG_CORE_HANDLE *pdev,  uint8_t ch_num) ;
 
 private:
         void USB_OTG_BSP_Init(void);
@@ -1146,9 +1146,57 @@ URB_STATE STM32F2< SS, INTR >::HCD_GetURB_State (USB_OTG_CORE_HANDLE *pdev , uin
   *
   */
 template< typename SS, typename INTR >
-HC_STATUS STM32F2< SS, INTR >::HCD_GetHCState (USB_OTG_CORE_HANDLE *pdev ,  uint8_t ch_num)
+uint8_t STM32F2< SS, INTR >::HCD_GetHCState (USB_OTG_CORE_HANDLE *pdev ,  uint8_t ch_num)
 {
-  return pdev->host.HC_Status[ch_num] ;
+  //return pdev->host.HC_Status[ch_num] ;
+	/* not used
+	 				  HC_HALTED,
+	 				  HC_NYET,
+	 				  HC_XACTERR,
+
+	 *
+	#define hrBADREQ    0x02
+	#define hrUNDEF     0x03
+	#define hrWRONGPID  0x07
+	#define hrBADBC     0x08
+	#define hrPIDERR    0x09
+	#define hrCRCERR    0x0B
+	#define hrKERR      0x0C
+	#define hrJERR      0x0D
+	#define hrTIMEOUT   0x0E
+					  */
+	HC_STATUS hcstatus_stm32 = pdev->host.HC_Status[ch_num];
+	uint8_t rcode = hrSUCCESS;
+
+	switch(hcstatus_stm32) {
+		case HC_XFRC:
+			rcode = hrSUCCESS;
+			break;
+		case HC_NAK:
+			rcode = hrNAK;
+			break;
+		case HC_STALL:
+			rcode = hrSTALL;
+			break;
+		case HC_BBLERR:
+			rcode = hrBABBLE;
+			break;
+		case HC_DATATGLERR:
+			rcode = hrTOGERR;
+			break;
+		case HC_IDLE:
+			rcode = hrBUSY;
+			break;
+		case HC_HALTED:
+		case HC_NYET:
+		case HC_XACTERR:
+			rcode = hrPKTERR;	// no matching error, so just use pkterr tempxxly
+			break;
+		default:
+			rcode = hcstatus_stm32;
+			break;
+	}
+
 }
 
 /* ------- private function members ------- */

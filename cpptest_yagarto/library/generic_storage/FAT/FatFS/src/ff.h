@@ -199,10 +199,11 @@ extern "C" {
                 FR_TOO_MANY_OPEN_FILES, /* (18) Number of open files > _FS_SHARE */
                 FR_INVALID_PARAMETER, /* (19) Given parameter is invalid */
                 FR_EOF, /* (20) end of file reached */
-                FR_EXDEV /* (21) oldpath and newpath are not on the same mounted file system. */
-        } FRESULT;
+                FR_EXDEV, /* (21) oldpath and newpath are not on the same mounted file system. */
+                FR_DISK_FULL, /* (22) no clusters left */
+                FR_ABORTED, /* (23) aborted file */
 
-
+        } /* __attribute__((packed)) */ FRESULT;
 
         /*--------------------------------------------------------------*/
         /* FatFs module application interface                           */
@@ -238,7 +239,7 @@ extern "C" {
         int f_puts(const TCHAR* str, FIL* cp); /* Put a string to the file */
         int f_printf(FIL* fp, const TCHAR* str, ...); /* Put a formatted string to the file */
         TCHAR* f_gets(TCHAR* buff, int len, FIL* fp); /* Get a string from the file */
-
+        FRESULT f_sync_fs(FATFS *fs);
 #define f_eof(fp) (((fp)->fptr == (fp)->fsize) ? 1 : 0)
 #define f_error(fp) (((fp)->flag & FA__ERROR) ? 1 : 0)
 #define f_tell(fp) ((fp)->fptr)

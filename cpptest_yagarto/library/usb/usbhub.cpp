@@ -192,14 +192,19 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 
                         pUsb->SetHubPreMask();
                         bPollEnable = true;
-
+                        //todo: i don't like this specified control pipe for hub, it should share pipe with hub-in or enum-out
+                        //epInfo[0].hcNumOut = USB::USBH_Alloc_Channel(pUsb->coreConfig, epInfo[0].epAddr);
                         epInfo[1].epAddr = buf[20];
                         epInfo[1].hcNumIn = USB::USBH_Alloc_Channel(pUsb->coreConfig, epInfo[1].epAddr);
-                		printf("\nAllocated hc num_in = %d (EP_TYPE_INTR)", epInfo[1].hcNumIn);
-
+                		//epInfo[0].hcNumIn = epInfo[1].hcNumIn;	// because control pipe needs in/out both.
+                        printf("\nHub Pipe in = %d (EP_TYPE_INTR), out = %d (EP_TYPE_CTRL)", epInfo[1].hcNumIn, epInfo[0].hcNumOut);
+                        printf("\nit's friday, let's stop here");
+                        printf("\nshould only use pipe 0/1 for setup packet, no matter which device. ");
+                        printf("\n(just change the dev address before sending the setup packet)");
                         // Assign epInfo to epinfo pointer
                         rcode = pUsb->setEpInfoEntry(bAddress, 2, epInfo);
                         USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[1].hcNumIn, bAddress, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_INTR, epInfo[1].maxPktSize);
+                        //USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[0].hcNumOut, bAddress, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_CTRL, epInfo[0].maxPktSize);
                         pUsb->coreConfig->host.hc[epInfo[1].hcNumIn].toggle_in ^= 0x1;
 
         //                bInitState = 0;
@@ -268,17 +273,12 @@ uint8_t USBHub::CheckHubStatus() {
         uint16_t read = 1;
 
         rcode = pUsb->inTransfer(bAddress, epInfo[1].epAddr, &read, buf);
-//todo: i need to do re-factoring for this inTransfer function.
-		delay_us(100);
-        rcode = USB::HCD_GetHCState(pUsb->coreConfig, epInfo[1].hcNumIn);
-        if(rcode == HC_XFRC) {
-        	rcode = 0;
-        } else {
-        	STM_EVAL_LEDToggle(LED1);
+        if(rcode != hrSUCCESS) {
+        	//STM_EVAL_LEDToggle(LED1);
         }
         if (rcode)
 			return rcode;
-
+        STM_EVAL_LEDToggle(LED1);
         //if (buf[0] & 0x01) // Hub Status Change
         //{
         //        pUsb->PrintHubStatus(addr);

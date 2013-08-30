@@ -325,7 +325,7 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 //			pep->bmRcvToggle = (regRd(rHRSL) & bmSNDTOGRD) ? 0 : 1;
 //			regWr(rHCTL, (pep->bmRcvToggle) ? bmRCVTOG1 : bmRCVTOG0); //set toggle value
 			printf("\nInXfer - toggle err");	// will meet toggle error here? todo: sometimes once unplugged device, there is small chance that Poll still works here.
-			continue;
+			//continue;
 		}
 		if (rcode) {
 			//printf(">>>>>>>> Problem! dispatchPkt %2.2x\r\n", rcode);
@@ -541,7 +541,7 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
 
             rcode = HCD_GetHCState(pdev, hcnum);	//(regRd(rHRSL) & 0x0f); //analyze transfer result
 			switch (rcode) {
-				case HC_NAK:	//hrNAK: todo: if timeout above with nak, we need to consider the next xfer.
+				case hrNAK: 	//todo: if timeout above with nak, we need to consider the next xfer.
 					nak_count++;
 					if (nak_limit && (nak_count == nak_limit))
 						return (rcode);
@@ -551,8 +551,6 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
 //					if (retry_count == USB_RETRY_LIMIT)
 //						return (rcode);
 //					break;
-				case HC_XFRC:
-					rcode = hrSUCCESS;
 				default:
 					return (rcode);
 			}
