@@ -458,7 +458,7 @@ static uint32_t USB_OTG_USBH_handle_port_ISR (USB_OTG_CORE_HANDLE *pdev)
 	  //   attached device is a LS device. we just re-init the clock for
 	  //   this LS device(above), so we need to ResetPort again at application level.
 	  //   !!!NOT HERE!!!
-	  pdev->host.port_need_reset = 1;	// need refactoring later.
+	  pdev->host.port_need_reset = 1;	// todo: need refactoring later.
   }
   /* Clear Port Interrupts */
   USB_OTG_WRITE_REG32(pdev->regs.HPRT0, hprt0_dup.d32);

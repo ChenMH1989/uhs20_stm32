@@ -154,7 +154,11 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
         setup_pkt.wLength = total;
 
 //        bytesWr(rSUDFIFO, 8, (uint8_t*) & setup_pkt); //transfer to setup packet FIFO
-
+        // *pep points to EP0 (HC0-out, HC1-in)
+        if(pdev->host.hc[pep->hcNumOut].dev_addr != addr)
+        	USBH_Modify_Channel (pdev, pep->hcNumOut, addr, 0, 0, 0);
+        if(pdev->host.hc[pep->hcNumIn].dev_addr != addr)
+        	USBH_Modify_Channel (pdev, pep->hcNumIn, addr, 0, 0, 0);
         rcode = dispatchPkt(tokSETUP, ep, nak_limit, (uint8_t *)&setup_pkt, sizeof(setup_pkt), pep->hcNumOut); //dispatch packet
 
         if (rcode) //return HRSLT if not zero
@@ -491,6 +495,7 @@ breakout:
 /* return codes 0x00-0x0f are HRSLT( 0x00 being success ), 0xff means timeout                       */
 uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t *data_p = NULL, uint16_t nbytes = 0, uint8_t hcnum = 0) {
         unsigned long timeout = millis() + USB_XFER_TIMEOUT;
+        //unsigned long timeout2 = timeout;
         uint8_t tmpdata;
         uint8_t rcode = hrSUCCESS;
         uint8_t retry_count = 0;
@@ -502,6 +507,7 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
 			//regWr(rHXFR, (token | ep)); //launch the transfer
         	if(token == tokSETUP) {
 				USBH_CtlSendSetup(pdev, data_p, hcnum);
+				//timeout2 = millis() + 10;
         	} else {
         		if(token == tokOUTHS) {
         			pdev->host.hc[hcnum].toggle_out = 0x1;
@@ -546,11 +552,11 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
 					if (nak_limit && (nak_count == nak_limit))
 						return (rcode);
 					break;
-//				case hrTIMEOUT:
-//					retry_count++;
-//					if (retry_count == USB_RETRY_LIMIT)
-//						return (rcode);
-//					break;
+				case hrTIMEOUT:
+					retry_count++;
+					if (retry_count == USB_RETRY_LIMIT)
+						return (rcode);
+					break;
 				default:
 					return (rcode);
 			}
@@ -598,7 +604,7 @@ void USB::Task(USB_OTG_CORE_HANDLE *pdev) //USB state machine
 
 	for (uint8_t i = 0; i < USB_NUMDEVICES; i++)
 		if (devConfig[i])
-			rcode = devConfig[i]->Poll(pdev);
+			rcode = devConfig[i]->Poll();
 
 	switch (usb_task_state) {
 		case USB_DETACHED_SUBSTATE_INITIALIZE:
@@ -805,11 +811,13 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
 		// assume:
 		// HC0 for control - out
         // HC1 for control - in
-        uint8_t hcnum = USBH_GetFreeChannel(pdev);
-        if(hcnum > 1) {
-        	USBH_Free_Channel(pdev, epInfo.hcNumOut);
-        	USBH_Free_Channel(pdev, epInfo.hcNumIn);
-        }
+        //uint8_t hcnum = USBH_GetFreeChannel(pdev);
+        //if(hcnum > 1) {
+        //	USBH_Free_Channel(pdev, epInfo.hcNumOut);
+        //	USBH_Free_Channel(pdev, epInfo.hcNumIn);
+        //}
+        USBH_Free_Channel(pdev, 0);
+        USBH_Free_Channel(pdev, 1);
 		epInfo.hcNumOut = USBH_Alloc_Channel(pdev, 0x00);	// ep_addr = 0
 		epInfo.hcNumIn = USBH_Alloc_Channel(pdev, 0x80);
 		USBH_Open_Channel(pdev, epInfo.hcNumOut, 0x0, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_CTRL, 0x8);

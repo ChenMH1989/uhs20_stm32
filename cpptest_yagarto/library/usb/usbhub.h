@@ -200,7 +200,7 @@ public:
 
         virtual uint8_t Init(uint8_t parent, uint8_t port, bool lowspeed);
         virtual uint8_t Release();
-        virtual uint8_t Poll(USB_OTG_CORE_HANDLE *pdev);
+        virtual uint8_t Poll();
         virtual void ResetHubPort(uint8_t port);
         virtual uint8_t GetAddress() {
 			return bAddress;

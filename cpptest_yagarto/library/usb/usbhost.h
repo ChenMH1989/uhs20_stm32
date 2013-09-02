@@ -1163,7 +1163,7 @@ uint8_t STM32F2< SS, INTR >::HCD_GetHCState (USB_OTG_CORE_HANDLE *pdev ,  uint8_
 	#define hrCRCERR    0x0B
 	#define hrKERR      0x0C
 	#define hrJERR      0x0D
-	#define hrTIMEOUT   0x0E
+	#define hrBUSY
 					  */
 	HC_STATUS hcstatus_stm32 = pdev->host.HC_Status[ch_num];
 	uint8_t rcode = hrSUCCESS;
@@ -1184,19 +1184,20 @@ uint8_t STM32F2< SS, INTR >::HCD_GetHCState (USB_OTG_CORE_HANDLE *pdev ,  uint8_
 		case HC_DATATGLERR:
 			rcode = hrTOGERR;
 			break;
-		case HC_IDLE:
-			rcode = hrBUSY;
-			break;
 		case HC_HALTED:
 		case HC_NYET:
-		case HC_XACTERR:
+		case HC_IDLE:	//todo: what does this mean?
 			rcode = hrPKTERR;	// no matching error, so just use pkterr tempxxly
+			break;
+		case HC_XACTERR:
+			rcode = hrTIMEOUT;
 			break;
 		default:
 			rcode = hcstatus_stm32;
 			break;
 	}
 
+	return rcode;
 }
 
 /* ------- private function members ------- */

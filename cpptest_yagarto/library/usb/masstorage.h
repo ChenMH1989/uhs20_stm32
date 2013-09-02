@@ -261,7 +261,7 @@ public:
         virtual uint8_t ConfigureDevice(uint8_t parent, uint8_t port, bool lowspeed);
 
         virtual uint8_t Release();
-        virtual uint8_t Poll(USB_OTG_CORE_HANDLE *pdev);
+        virtual uint8_t Poll();
 
         virtual uint8_t GetAddress() {
                 return bAddress;

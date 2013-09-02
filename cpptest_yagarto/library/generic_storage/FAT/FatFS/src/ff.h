@@ -256,9 +256,11 @@ extern "C" {
         /* Additional user defined functions                            */
 
         /* RTC function */
-#if !_FS_READONLY && !defined(GET_FATTIME)
+#if !_FS_READONLY
+#ifndef GET_FATTIME
 #define GET_FATTIME get_fattime
         DWORD get_fattime(void);
+#endif
 #endif
 
         /* Unicode support functions */

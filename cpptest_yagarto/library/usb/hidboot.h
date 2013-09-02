@@ -200,7 +200,7 @@ public:
         // USBDeviceConfig implementation
         virtual uint8_t Init(uint8_t parent, uint8_t port, bool lowspeed);
         virtual uint8_t Release();
-        virtual uint8_t Poll(USB_OTG_CORE_HANDLE *pdev);
+        virtual uint8_t Poll();
 
         virtual uint8_t GetAddress() {
                 return bAddress;
@@ -496,7 +496,7 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Release() {
 }
 
 template <const uint8_t BOOT_PROTOCOL>
-uint8_t HIDBoot<BOOT_PROTOCOL>::Poll(USB_OTG_CORE_HANDLE *pdev) {
+uint8_t HIDBoot<BOOT_PROTOCOL>::Poll() {
 	uint8_t rcode = HC_IDLE;
 	URB_STATE URB_Status = URB_IDLE;
 
@@ -510,20 +510,7 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Poll(USB_OTG_CORE_HANDLE *pdev) {
 		uint8_t buf[const_buff_len];
 		uint16_t read = (uint16_t) epInfo[epInterruptInIndex].maxPktSize;
 		rcode = pUsb->inTransfer(bAddress, epInfo[epInterruptInIndex].epAddr, &read, buf);
-/*
-		delay_us(100);
-		rcode = USB::HCD_GetHCState(pdev, epInfo[epInterruptInIndex].hcNumIn);
-		while(1) {
-			URB_Status = USB::HCD_GetURB_State(pdev, epInfo[epInterruptInIndex].hcNumIn);
-			if(URB_Status == URB_DONE) {
-				STM_EVAL_LEDToggle(LED1);
-				rcode = USB::HCD_GetHCState(pdev, epInfo[epInterruptInIndex].hcNumIn);
-				break;
-			} else if(URB_Status == URB_IDLE) {
-				return rcode;
-			}
-		}
-*/
+
 		if(rcode) {
 			if(rcode != hrNAK) {
 				STM_EVAL_LEDToggle(LED1);

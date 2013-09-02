@@ -120,7 +120,7 @@ public:
         virtual uint8_t Init(uint8_t parent, uint8_t port, bool lowspeed) { return 0; }
         virtual uint8_t ConfigureDevice(uint8_t parent, uint8_t port, bool lowspeed) {return 0; }
         virtual uint8_t Release() { return 0; }
-        virtual uint8_t Poll(USB_OTG_CORE_HANDLE *pdev) { return 0; }
+        virtual uint8_t Poll() { return 0; }
         virtual uint8_t GetAddress() { return 0; }
         virtual void ResetHubPort(uint8_t port) { return; } // Note used for hubs only!
         virtual uint8_t VIDPIDOK(uint16_t vid, uint16_t pid) { return false; }

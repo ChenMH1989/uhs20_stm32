@@ -54,7 +54,6 @@ uint8_t BulkOnly::WriteProtected(uint8_t lun) {
         return WriteOk[lun];
 }
 
-
 /**
  * Lock or Unlock the tray or door on device.
  * Caution: Some devices with buggy firmware will lock up.
@@ -134,7 +133,7 @@ uint8_t BulkOnly::MediaCTL(uint8_t lun, uint8_t ctl) {
 uint8_t BulkOnly::Read(uint8_t lun, uint32_t addr, uint16_t bsize, uint8_t blocks, uint8_t *buf) {
         if (!LUNOk[lun]) return MASS_ERR_NO_MEDIA;
         Notify(PSTR("\r\nRead LUN:\t"), 0x80);
-        D_PrintHex<uint8_t > (lun, 0x80);
+        D_PrintHex<uint8_t > (lun, 0x90);
         //printf("LUN=%i LBA=%8.8X BLOCKS=%i SIZE=%i\r\n", lun, addr, blocks, bsize);
         Notify(PSTR("\r\nLBA:\t\t"), 0x90);
         D_PrintHex<uint32_t > (addr, 0x90);
@@ -236,7 +235,6 @@ again:
 // Main driver code
 
 ////////////////////////////////////////////////////////////////////////////////
-
 
 BulkOnly::BulkOnly(USB *p) :
 pUsb(p),
@@ -412,7 +410,6 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
                 if (bNumEP > 1)
                         break;
         } // for
-        //STM_EVAL_LEDToggle(LED1);
 
         if (bNumEP < 3)
 			return USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
@@ -461,9 +458,8 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         for (uint8_t lun = 0; lun <= bMaxLUN; lun++) {
                 InquiryResponse response;
                 rcode = Inquiry(lun, sizeof (InquiryResponse), (uint8_t*) & response);
-                //STM_EVAL_LEDToggle(LED1);
                 if (rcode) {
-					printf("\nInquiry errcode=%d", rcode);
+                        ErrorMessage<uint8_t > (PSTR("Inquiry"), rcode);
                 } else {
                         uint8_t tries = 0xf0;
                         while (rcode = TestUnitReady(lun)) {
@@ -478,7 +474,6 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 							tries++;
 							if (!tries) break;
                         }
-                    	//STM_EVAL_LEDToggle(LED1);
                         if (!rcode) {
 							delay(1000);
 							LUNOk[lun] = CheckLUN(lun);
@@ -489,7 +484,6 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
                 }
         }
 
-//        STM_EVAL_LEDToggle(LED1);
 
 #if 0
         {
@@ -657,7 +651,6 @@ uint8_t BulkOnly::CheckLUN(uint8_t lun) {
         return false;
 }
 
-
 /**
  * For driver use only.
  *
@@ -689,8 +682,8 @@ void BulkOnly::CheckMedia() {
  *
  * @return
  */
-uint8_t BulkOnly::Poll(USB_OTG_CORE_HANDLE *pdev) {
-        uint8_t rcode = 0;
+uint8_t BulkOnly::Poll() {
+        //uint8_t rcode = 0;
 
         if (!bPollEnable)
 			return 0;
@@ -698,9 +691,9 @@ uint8_t BulkOnly::Poll(USB_OTG_CORE_HANDLE *pdev) {
         if (qNextPollTime <= millis()) {
                 CheckMedia();
         }
-        rcode = 0;
+        //rcode = 0;
 
-        return rcode;
+        return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -725,7 +718,6 @@ uint8_t BulkOnly::GetMaxLUN(uint8_t *plun) {
 
         return 0;
 }
-
 
 /**
  * For driver use only. Used during Driver Init
@@ -931,8 +923,6 @@ uint8_t BulkOnly::Page3F(uint8_t lun) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 /**
  * For driver use only.
  *
@@ -1001,7 +991,12 @@ void BulkOnly::ClearAllEP() {
                 epInfo[i].bmNakPower = USB_NAK_DEFAULT;
         }
 
-        for (uint8_t i = 0; i < MASS_MAX_SUPPORTED_LUN; i++) LUNOk[i] = false;
+        for (uint8_t i = 0; i < MASS_MAX_SUPPORTED_LUN; i++) {
+                LUNOk[i] = false;
+                WriteOk[i] = false;
+                CurrentCapacity[i] = 0lu;
+                CurrentSectorSize[i] = 0;
+        }
         bIface = 0;
         bNumEP = 1;
 
@@ -1012,7 +1007,6 @@ void BulkOnly::ClearAllEP() {
         bMaxLUN = 0;
         bTheLUN = 0;
 }
-
 
 /**
  * For driver use only.
@@ -1139,7 +1133,7 @@ uint8_t BulkOnly::Transaction(CommandBlockWrapper *pcbw, uint16_t buf_size, void
         ret = HandleUsbError(usberr, epDataOutIndex);
         //ret = HandleUsbError(pUsb->outTransfer(bAddress, epInfo[epDataOutIndex].epAddr, sizeof (CommandBlockWrapper), (uint8_t*)pcbw), epDataOutIndex);
         if (ret) {
-        	printf("============================ CBW=%d", ret);
+                ErrorMessage<uint8_t > (PSTR("============================ CBW"), ret);
         } else {
                 if (bytes) {
                         if (!write) {
@@ -1199,7 +1193,6 @@ NotReady:
 					//HandleUsbError(usberr, epDataInIndex);
 					if (tries) ResetRecovery();
                 }
-
                 if (!ret) {
                         Notify(PSTR("CBW:\t\tOK\r\n"), 0x80);
                         Notify(PSTR("Data Stage:\tOK\r\n"), 0x80);
@@ -1221,13 +1214,17 @@ NotReady:
                                 Notify(PSTR("CSW:\t\tOK\r\n\r\n"), 0x80);
                                 return csw.bCSWStatus;
                         } else {
+                                // NOTE! Sometimes this is caused by the reported residue being wrong.
+                                // Get a different device. It isn't compliant, and should have never passed Q&A.
+                                // I own one... 05e3:0701 Genesys Logic, Inc. USB 2.0 IDE Adapter.
+                                // Other devices that exhibit this behavior exist in the wild too.
+                                // Be sure to check for quirks on Linux before reporting a bug. --xxxajk
                                 Notify(PSTR("Invalid CSW\r\n"), 0x80);
                                 ResetRecovery();
                                 //return MASS_ERR_SUCCESS;
                                 return MASS_ERR_INVALID_CSW;
                         }
                 }
-
         }
         return ret;
 }
@@ -1373,7 +1370,6 @@ uint8_t BulkOnly::HandleSCSIError(uint8_t status) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-
 /**
  *
  * @param ep_ptr
@@ -1403,7 +1399,6 @@ void BulkOnly::PrintEndpointDescriptor(const USB_ENDPOINT_DESCRIPTOR * ep_ptr) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-
 
 /* We won't be needing this... */
 uint8_t BulkOnly::Read(uint8_t lun, uint32_t addr, uint16_t bsize, uint8_t blocks, USBReadParser * prs) {

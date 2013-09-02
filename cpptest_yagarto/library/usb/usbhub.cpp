@@ -254,7 +254,7 @@ uint8_t USBHub::Release() {
 	return 0;
 }
 
-uint8_t USBHub::Poll(USB_OTG_CORE_HANDLE *pdev) {
+uint8_t USBHub::Poll() {
         uint8_t rcode = 0;
 
         if (!bPollEnable)

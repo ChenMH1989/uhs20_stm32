@@ -226,6 +226,7 @@ public:
                 }
 
                 UsbDeviceAddress addr;
+                addr.devAddress = 0;
 
                 addr.bmParent = ((UsbDeviceAddress*) & parent)->bmAddress;
 
