@@ -274,7 +274,7 @@ uint8_t BulkOnly::ConfigureDevice(uint8_t parent, uint8_t port, bool lowspeed) {
 	UsbDevice *p = NULL;
 	EpInfo *oldep_ptr = NULL;
 
-	USBTRACE("MSC ConfigureDevice\r\n");
+	USBTRACE("\nMSC ConfigureDevice\r\n");
 	ClearAllEP();
 	//delay(2000);
 	AddressPool &addrPool = pUsb->GetAddressPool();

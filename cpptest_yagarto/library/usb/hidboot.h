@@ -360,9 +360,8 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
 
         if(bNumEP < 2) {
         	printf("\nHIDBoot Dev not supported, bNumEP = %d", bNumEP);
-			addrPool.FreeAddress(bAddress);
-			bAddress = 0;
-        	return USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
+        	rcode = USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
+        	goto Fail;
         }
         //USBTRACE2("\r\nbAddr:", bAddress);
         //USBTRACE2("\r\nbNumEP:", bNumEP);
@@ -482,7 +481,7 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Release() {
 		USB::USB_OTG_HC_Halt(pUsb->coreConfig, epInfo[1].hcNumIn);
 		USB::USBH_Free_Channel(pUsb->coreConfig, epInfo[1].hcNumIn);
 	}
-	//todo: we need uninstall epInfo either.
+	//todo: we need to uninstall epInfo either.
 	epInfo[1].hcNumber = 0;
 
 	pUsb->GetAddressPool().FreeAddress(bAddress);
