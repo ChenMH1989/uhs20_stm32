@@ -691,7 +691,11 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
       if(pdev->host.hc[num].isEvenTimesToggle) {	// even times packets has been transfered.
     	  pdev->host.hc[num].isEvenTimesToggle = 0;
       } else {
-    	  pdev->host.hc[num].toggle_in ^= 1;
+    	  // todo: 1. need to check why xfercompl happened when the request packets
+    	  // not received completely. (happened only in MSC Mode Sense(6) command.
+    	  uint32_t num_packets = (pdev->host.hc[num].xfer_count + pdev->host.hc[num].max_packet - 1) / pdev->host.hc[num].max_packet;
+    	  if(num_packets & 0x1)
+    		  pdev->host.hc[num].toggle_in ^= 1;
       }
       
     }

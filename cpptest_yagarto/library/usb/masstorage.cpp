@@ -219,6 +219,8 @@ again:
 
         SetCurLUN(lun);
         uint8_t er = HandleSCSIError(Transaction(&cbw, bsize, (void*)buf, 0));
+        STM_EVAL_LEDToggle(LED1);
+
         if (er == MASS_ERR_WRITE_STALL) {
                 MediaCTL(lun, 1);
                 delay(150);
@@ -351,7 +353,7 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         uint8_t rcode;
         uint8_t num_of_conf = epInfo[1].epAddr; // number of configurations
         epInfo[1].epAddr = 0;
-        USBTRACE("MSC Init\r\n");
+        USBTRACE("\n\nMSC Init");
 
         AddressPool &addrPool = pUsb->GetAddressPool();
         UsbDevice *p = addrPool.GetUsbDevicePtr(bAddress);
@@ -940,6 +942,10 @@ uint8_t BulkOnly::ClearEpHalt(uint8_t index) {
         }
         epInfo[index].bmSndToggle = 0;
         epInfo[index].bmRcvToggle = 0;
+
+        USB_OTG_CORE_HANDLE *pdev = pUsb->coreConfig;
+        pdev->host.hc[epInfo[index].hcNumIn].toggle_in = 0;
+        pdev->host.hc[epInfo[index].hcNumOut].toggle_out = 0;
         // epAttribs = 0;
         return 0;
 }
@@ -981,8 +987,8 @@ void BulkOnly::ClearAllEP() {
                 epInfo[i].epAddr = 0;
                 epInfo[i].maxPktSize = (i) ? 0 : 8;
                 epInfo[i].epAttribs = 0;
-                epInfo[i].hcNumber = 0;
                 epInfo[i].bmNakPower = USB_NAK_DEFAULT;
+                epInfo[i].hcNumber = 0;
         }
 
         for (uint8_t i = 0; i < MASS_MAX_SUPPORTED_LUN; i++) {
@@ -1116,13 +1122,6 @@ uint8_t BulkOnly::Transaction(CommandBlockWrapper *pcbw, uint16_t buf_size, void
         usberr = pUsb->outTransfer(bAddress,
         		epInfo[epDataOutIndex].epAddr,
         		sizeof (CommandBlockWrapper), (uint8_t*)pcbw);
-        while(1) {
-        	URB_Status = USB::HCD_GetURB_State(pUsb->coreConfig, epInfo[epDataOutIndex].hcNumOut);
-			if(URB_Status == URB_DONE) {
-		        STM_EVAL_LEDToggle(LED1);
-		        break;
-			}
-		}
 
         ret = HandleUsbError(usberr, epDataOutIndex);
         //ret = HandleUsbError(pUsb->outTransfer(bAddress, epInfo[epDataOutIndex].epAddr, sizeof (CommandBlockWrapper), (uint8_t*)pcbw), epDataOutIndex);
@@ -1138,28 +1137,13 @@ uint8_t BulkOnly::Transaction(CommandBlockWrapper *pcbw, uint16_t buf_size, void
                                 } else {
                                         //while ((usberr = pUsb->inTransfer(bAddress, epInfo[epDataInIndex].epAddr, &bytes, (uint8_t*)buf)) == hrBUSY) delay(1);
                                 	usberr = pUsb->inTransfer(bAddress, epInfo[epDataInIndex].epAddr, &bytes, (uint8_t*)buf);
-                                	while(1) {
-										URB_Status = USB::HCD_GetURB_State(pUsb->coreConfig, epInfo[epDataInIndex].hcNumIn);
-										if(URB_Status == URB_DONE) {
-											STM_EVAL_LEDToggle(LED1);
-											break;
-										}
-									}
                                 }
                                 ret = HandleUsbError(usberr, epDataInIndex);
                         } else {
                                 //while ((usberr = pUsb->outTransfer(bAddress, epInfo[epDataOutIndex].epAddr, bytes, (uint8_t*)buf)) == hrBUSY) delay(1);
-NotReady:
                         	usberr = pUsb->outTransfer(bAddress, epInfo[epDataOutIndex].epAddr, bytes, (uint8_t*)buf);
-                        	while(1) {
-								URB_Status = USB::HCD_GetURB_State(pUsb->coreConfig, epInfo[epDataOutIndex].hcNumOut);
-								if(URB_Status == URB_DONE) {
-									STM_EVAL_LEDToggle(LED1);
-									break;
-								} else if (URB_Status == URB_NOTREADY)
-									goto NotReady;
-							}
-							ret = HandleUsbError(usberr, epDataOutIndex);
+                        	STM_EVAL_LEDToggle(LED1);
+                        	ret = HandleUsbError(usberr, epDataOutIndex);
                         }
                         if (ret) {
                                 ErrorMessage<uint8_t > (PSTR("============================ DAT"), ret);
@@ -1168,19 +1152,13 @@ NotReady:
         }
 
         //if (!ret || ret == MASS_ERR_WRITE_STALL || ret == MASS_ERR_STALL) {
-        {
+        {	//receive csw
                 bytes = sizeof (CommandStatusWrapper);
                 int tries = 2;
                 while (tries--) {
                         //while ((usberr = pUsb->inTransfer(bAddress, epInfo[epDataInIndex].epAddr, &bytes, (uint8_t*) & csw)) == hrBUSY) delay(1);
                 	usberr = pUsb->inTransfer(bAddress, epInfo[epDataInIndex].epAddr, &bytes, (uint8_t*) & csw);
-                	while(1) {
-						URB_Status = USB::HCD_GetURB_State(pUsb->coreConfig, epInfo[epDataInIndex].hcNumIn);
-						if(URB_Status == URB_DONE) {
-							STM_EVAL_LEDToggle(LED1);
-							break;
-						}
-					}
+                	STM_EVAL_LEDToggle(LED1);
 
 					if (!usberr) break;
 					ClearEpHalt(epDataInIndex);

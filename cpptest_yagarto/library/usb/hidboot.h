@@ -251,7 +251,7 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
 
         AddressPool &addrPool = pUsb->GetAddressPool();
 
-        printf("\nHIDBoot Init\n");
+        printf("\n\nHIDBoot Init");
 
         if(bAddress)
 			return USB_ERROR_CLASS_INSTANCE_ALREADY_IN_USE;
@@ -281,7 +281,7 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
         // Get device descriptor
         rcode = pUsb->getDevDescr(0, 0, 8, (uint8_t*) buf);
         //STM_EVAL_LEDToggle(LED1);
-        printf("HIDBoot - Get 2nd 8 byte desc.\n");
+        printf("\nHIDBoot - Get 2nd 8 byte desc.");
         if(!rcode)
 			len = (buf[0] > constBufSize) ? constBufSize : buf[0];
 
@@ -315,7 +315,7 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
 			return rcode;
         }
 
-        printf("HIDBoot Addr:%d\n", bAddress);
+        printf("\nHIDBoot Addr:%d", bAddress);
 
         p->lowspeed = false;
 

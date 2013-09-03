@@ -174,19 +174,7 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
 				pdev->host.hc[pep->hcNumIn].toggle_in = 0x1;
 				uint16_t read = total;	//nbytes;
 				rcode = InTransfer(pep, nak_limit, &read, dataptr);
-#if 0
-				while(1) {
-					URB_Status = HCD_GetURB_State(pdev, pep->hcNumIn);
-					if(URB_Status == URB_DONE) {
-						//STM_EVAL_LEDToggle(LED1);
-						//printf("\nGetDevDesc - Data In");
-						break;
-					} else {
-						// errors
-						STM_EVAL_LEDToggle(LED1);
-					}
-				}
-#endif
+
 				// Invoke callback function if inTransfer completed successfully and callback function pointer is specified
 				if (!rcode && p)
 					((USBReadParser*)p)->Parse(read, dataptr, total - left);
@@ -328,6 +316,7 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 			// yes, we flip it wrong here so that next time it is actually correct!
 //			pep->bmRcvToggle = (regRd(rHRSL) & bmSNDTOGRD) ? 0 : 1;
 //			regWr(rHCTL, (pep->bmRcvToggle) ? bmRCVTOG1 : bmRCVTOG0); //set toggle value
+			//pdev->host.hc[hcnum].toggle_in ^= 0x1;
 			printf("\nInXfer - toggle err");	// will meet toggle error here? todo: sometimes once unplugged device, there is small chance that Poll still works here.
 			//continue;
 		}
@@ -401,15 +390,15 @@ uint8_t USB::OutTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t nbytes, uint8
 	uint8_t *data_p = data; //local copy of the data pointer
 	uint16_t bytes_tosend, nak_count;
 	uint16_t bytes_left = nbytes;
+	USB_OTG_CORE_HANDLE *pdev = coreConfig;
+	uint32_t hcnum = pep->hcNumOut;
 
 	uint8_t maxpktsize = pep->maxPktSize;
 
 	if (maxpktsize < 1 || maxpktsize > 64)
 		return USB_ERROR_INVALID_MAX_PKT_SIZE;
 
-#if 1
-	USB_OTG_CORE_HANDLE *pdev = coreConfig;
-	uint32_t hcnum = pep->hcNumOut;
+#if 0
 	pdev->host.hc[hcnum].ep_is_in = 0;
 	pdev->host.hc[hcnum].xfer_buff = data; //buff;
 	pdev->host.hc[hcnum].xfer_len = nbytes;	//length;
@@ -433,57 +422,93 @@ uint8_t USB::OutTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t nbytes, uint8
 #else
         unsigned long timeout = millis() + USB_XFER_TIMEOUT;
 
-        regWr(rHCTL, (pep->bmSndToggle) ? bmSNDTOG1 : bmSNDTOG0); //set toggle value
+        //regWr(rHCTL, (pep->bmSndToggle) ? bmSNDTOG1 : bmSNDTOG0); //set toggle value
+    	pdev->host.hc[hcnum].ep_is_in = 0;
+    	pdev->host.hc[hcnum].xfer_buff = data; //buff;
+    	pdev->host.hc[hcnum].xfer_len = nbytes;	//length;
 
-        while (bytes_left) {
-                retry_count = 0;
-                nak_count = 0;
-                bytes_tosend = (bytes_left >= maxpktsize) ? maxpktsize : bytes_left;
-                bytesWr(rSNDFIFO, bytes_tosend, data_p); //filling output FIFO
-                regWr(rSNDBC, bytes_tosend); //set number of bytes
-                regWr(rHXFR, (tokOUT | pep->epAddr)); //dispatch packet
-                while (!(regRd(rHIRQ) & bmHXFRDNIRQ)); //wait for the completion IRQ
-                regWr(rHIRQ, bmHXFRDNIRQ); //clear IRQ
-                rcode = (regRd(rHRSL) & 0x0f);
+    	if(nbytes == 0)
+    	{ /* For Status OUT stage, Length==0, Status Out PID = 1 */
+    		pdev->host.hc[hcnum].toggle_out = 1;
+    	}
 
-                while (rcode && (timeout > millis())) {
-                        switch (rcode) {
-                                case hrNAK:
-                                        nak_count++;
-                                        if (nak_limit && (nak_count == nak_limit))
-                                                goto breakout;
-                                        //return ( rcode);
-                                        break;
-                                case hrTIMEOUT:
-                                        retry_count++;
-                                        if (retry_count == USB_RETRY_LIMIT)
-                                                goto breakout;
-                                        //return ( rcode);
-                                        break;
-                                case hrTOGERR:
-                                        // yes, we flip it wrong here so that next time it is actually correct!
-                                        pep->bmSndToggle = (regRd(rHRSL) & bmSNDTOGRD) ? 0 : 1;
-                                        regWr(rHCTL, (pep->bmSndToggle) ? bmSNDTOG1 : bmSNDTOG0); //set toggle value
-                                        break;
-                                default:
-                                        goto breakout;
-                        }//switch( rcode
+    	/* Set the Data Toggle bit as per the Flag */
+    	if ( pdev->host.hc[hcnum].toggle_out == 0)
+    	{ /* Put the PID 0 */
+    		pdev->host.hc[hcnum].data_pid = HC_PID_DATA0;
+    	}
+    	else
+    	{ /* Put the PID 1 */
+    		pdev->host.hc[hcnum].data_pid = HC_PID_DATA1 ;
+    	}
 
-                        /* process NAK according to Host out NAK bug */
-                        regWr(rSNDBC, 0);
-                        regWr(rSNDFIFO, *data_p);
-                        regWr(rSNDBC, bytes_tosend);
-                        regWr(rHXFR, (tokOUT | pep->epAddr)); //dispatch packet
-                        while (!(regRd(rHIRQ) & bmHXFRDNIRQ)); //wait for the completion IRQ
-                        regWr(rHIRQ, bmHXFRDNIRQ); //clear IRQ
-                        rcode = (regRd(rHRSL) & 0x0f);
-                }//while( rcode && ....
-                bytes_left -= bytes_tosend;
-                data_p += bytes_tosend;
-        }//while( bytes_left...
+		retry_count = 0;
+		nak_count = 0;
+		while (bytes_left) {
+			// we send all data at once due to large fifo
+			//bytes_tosend = (bytes_left >= maxpktsize) ? maxpktsize : bytes_left;
+			//bytesWr(rSNDFIFO, bytes_tosend, data_p); //filling output FIFO
+			//regWr(rSNDBC, bytes_tosend); //set number of bytes
+			//regWr(rHXFR, (tokOUT | pep->epAddr)); //dispatch packet
+			HCD_SubmitRequest(pdev, hcnum);
+
+			rcode = USB_ERROR_TRANSFER_TIMEOUT;
+			while (timeout > millis())  //while (!(regRd(rHIRQ) & bmHXFRDNIRQ)); //wait for the completion IRQ
+			{
+				rcode = HCD_GetURB_State(pdev, hcnum);	//regRd(rHIRQ);
+				if (rcode != URB_IDLE) {	//& bmHXFRDNIRQ) {
+					//regWr(rHIRQ, bmHXFRDNIRQ); //clear IRQ
+					rcode = 0x00;
+					break;
+				}
+			}
+			if(rcode != 0x00)
+				return rcode;	// todo: return for what
+
+			rcode = HCD_GetHCState(pdev, hcnum);	//(regRd(rHRSL) & 0x0f);
+			//while (rcode && (timeout > millis())) {	// we don't need pulling here because we already did it above
+				switch (rcode) {
+					case hrNAK:
+						nak_count++;	//maybe a NOT_READY happens
+						if (nak_limit && (nak_count == nak_limit))
+							goto breakout;
+						//return ( rcode);
+						break;
+					case hrTIMEOUT:
+						retry_count++;
+						if (retry_count == USB_RETRY_LIMIT)
+							goto breakout;
+						//return ( rcode);
+						break;
+					case hrTOGERR:
+						// yes, we flip it wrong here so that next time it is actually correct!
+						//pep->bmSndToggle = (regRd(rHRSL) & bmSNDTOGRD) ? 0 : 1;
+						//regWr(rHCTL, (pep->bmSndToggle) ? bmSNDTOG1 : bmSNDTOG0); //set toggle value
+						printf("\nOutTransfer - togerr");
+						//break;
+					default:
+						goto breakout;
+				}//switch( rcode
+
+				/* process NAK according to Host out NAK bug */
+				uint32_t xfered_bytes = pdev->host.hc[hcnum].xfer_count;
+				bytes_left = nbytes - xfered_bytes;
+		    	pdev->host.hc[hcnum].xfer_buff = data + xfered_bytes;
+		    	pdev->host.hc[hcnum].xfer_len = bytes_left;
+				//regWr(rSNDBC, 0);
+				//regWr(rSNDFIFO, *data_p);
+				//regWr(rSNDBC, bytes_tosend);
+				//regWr(rHXFR, (tokOUT | pep->epAddr)); //dispatch packet
+				//while (!(regRd(rHIRQ) & bmHXFRDNIRQ)); //wait for the completion IRQ
+				//regWr(rHIRQ, bmHXFRDNIRQ); //clear IRQ
+				//rcode = (regRd(rHRSL) & 0x0f);
+			//}//while( rcode && ....
+			// bytes_left seems never decreasing to 0
+			//bytes_left -= bytes_tosend;
+			//data_p += bytes_tosend;
+		}//while( bytes_left...
 breakout:
-
-        pep->bmSndToggle = (regRd(rHRSL) & bmSNDTOGRD) ? 1 : 0; //bmSNDTOG1 : bmSNDTOG0;  //update toggle
+        //pep->bmSndToggle = (regRd(rHRSL) & bmSNDTOGRD) ? 1 : 0; //bmSNDTOG1 : bmSNDTOG0;  //update toggle
 #endif
         return ( rcode); //should be 0 in all cases
 }
