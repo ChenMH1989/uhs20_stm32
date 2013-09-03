@@ -273,7 +273,8 @@ uint8_t BulkOnly::ConfigureDevice(uint8_t parent, uint8_t port, bool lowspeed) {
 	uint8_t rcode;
 	UsbDevice *p = NULL;
 	EpInfo *oldep_ptr = NULL;
-        USBTRACE("MS ConfigureDevice\r\n");
+
+	USBTRACE("MSC ConfigureDevice\r\n");
 	ClearAllEP();
 	//delay(2000);
 	AddressPool &addrPool = pUsb->GetAddressPool();
@@ -350,7 +351,7 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         uint8_t rcode;
         uint8_t num_of_conf = epInfo[1].epAddr; // number of configurations
         epInfo[1].epAddr = 0;
-        USBTRACE("MS Init\r\n");
+        USBTRACE("MSC Init\r\n");
 
         AddressPool &addrPool = pUsb->GetAddressPool();
         UsbDevice *p = addrPool.GetUsbDevicePtr(bAddress);
@@ -370,14 +371,7 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 			return rcode;
         }
 
-        printf("\n 1. tidy up previous classes->Init()");
-        printf("\n  like HC's bAddress, maxPktSize");
-        printf("\n 3. allocate new HC for MSC class.");
-        /* modify control channels to update device address */
-        USB::USBH_Modify_Channel (pUsb->coreConfig, epInfo[0].hcNumIn, bAddress, 0, 0, 0);
-        USB::USBH_Modify_Channel (pUsb->coreConfig, epInfo[0].hcNumOut, bAddress, 0, 0, 0);
-
-        printf("\nAddr:%d", bAddress);
+        printf("\nMSC Addr:%d", bAddress);
 
         p->lowspeed = false;
 
@@ -452,8 +446,8 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[2].hcNumOut, bAddress,
         		(lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_BULK, epInfo[2].maxPktSize);
 
-        printf("\nep1_in hc=%x, addr=0x%x(0x81)", epInfo[1].hcNumIn, epInfo[1].epAddr);
-        printf("\nep2_out hc=%x, addr=0x%x(0x2)", epInfo[2].hcNumOut, epInfo[2].epAddr);
+        printf("\nMSC Pipe EP1 in = %x, addr = 0x%x(0x81)", epInfo[1].hcNumIn, epInfo[1].epAddr);
+        printf("\nMSC Pipe EP2 out = %x, addr = 0x%x(0x2)", epInfo[2].hcNumOut, epInfo[2].epAddr);
 
         for (uint8_t lun = 0; lun <= bMaxLUN; lun++) {
                 InquiryResponse response;
@@ -505,7 +499,7 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         if (rcode)
                 goto FailOnInit;
 
-        USBTRACE("MS configured\r\n\r\n");
+        USBTRACE("\nMSC configured\r\n\r\n");
 
         bPollEnable = true;
 

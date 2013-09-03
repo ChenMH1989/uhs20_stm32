@@ -47,7 +47,7 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         uint8_t len = 0;
         uint16_t cd_len = 0;
 
-        //USBTRACE("\r\nHub Init Start ");
+        USBTRACE("\r\nHub Init Start ");
         //D_PrintHex<uint8_t > (bInitState, 0x80);
 
         AddressPool &addrPool = pUsb->GetAddressPool();
@@ -115,9 +115,6 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 							bAddress = 0;
 							return rcode;
                         }
-                        /* modify control channels to update device address */
-                        USB::USBH_Modify_Channel (pUsb->coreConfig, epInfo[0].hcNumIn, bAddress, 0, 0, 0);
-                        USB::USBH_Modify_Channel (pUsb->coreConfig, epInfo[0].hcNumOut, bAddress, 0, 0, 0);
 
                         printf("\r\nHub address:0x%x", bAddress);
                     //TODO: the hcNumOut/hcNumIn are flushed by below restore code.
@@ -192,19 +189,14 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 
                         pUsb->SetHubPreMask();
                         bPollEnable = true;
-                        //todo: i don't like this specified control pipe for hub, it should share pipe with hub-in or enum-out
-                        //epInfo[0].hcNumOut = USB::USBH_Alloc_Channel(pUsb->coreConfig, epInfo[0].epAddr);
+
                         epInfo[1].epAddr = buf[20];
                         epInfo[1].hcNumIn = USB::USBH_Alloc_Channel(pUsb->coreConfig, epInfo[1].epAddr);
-                		//epInfo[0].hcNumIn = epInfo[1].hcNumIn;	// because control pipe needs in/out both.
-                        printf("\nHub Pipe in = %d (EP_TYPE_INTR), out = %d (EP_TYPE_CTRL)", epInfo[1].hcNumIn, epInfo[0].hcNumOut);
-                        printf("\nit's friday, let's stop here");
-                        printf("\nshould only use pipe 0/1 for setup packet, no matter which device. ");
-                        printf("\n(just change the dev address before sending the setup packet)");
+                        printf("\nHub Pipe in = %d (EP_TYPE_INTR)", epInfo[1].hcNumIn);
+
                         // Assign epInfo to epinfo pointer
                         rcode = pUsb->setEpInfoEntry(bAddress, 2, epInfo);
                         USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[1].hcNumIn, bAddress, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_INTR, epInfo[1].maxPktSize);
-                        //USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[0].hcNumOut, bAddress, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_CTRL, epInfo[0].maxPktSize);
                         pUsb->coreConfig->host.hc[epInfo[1].hcNumIn].toggle_in ^= 0x1;
 
         //                bInitState = 0;
@@ -380,6 +372,7 @@ uint8_t USBHub::PortStatusChange(uint8_t port, HubEvent &evt) {
                         bResetInitiated = false;
 
                         UsbDeviceAddress a;
+                        a.devAddress = 0;	// var init first
                         a.bmHub = 0;
                         a.bmParent = bAddress;
                         a.bmAddress = port;

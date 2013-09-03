@@ -80,8 +80,6 @@ struct UsbDeviceAddress {
 struct UsbDevice {
 	EpInfo *epinfo; // endpoint info pointer
 	uint8_t address; // address, should be the device address which was stored in HCCHARx. bit DAD
-//	USB_OTG_HC       	hc [USB_OTG_MAX_TX_FIFOS];	// Host Channel (usb pipe) struct copied from st
-
 	uint8_t epcount; // number of endpoints
 	bool lowspeed; // indicates if a device is the low speed one
 
@@ -226,7 +224,7 @@ public:
                 }
 
                 UsbDeviceAddress addr;
-                addr.devAddress = 0;
+                addr.devAddress = 0; // Ensure all bits are zero
 
                 addr.bmParent = ((UsbDeviceAddress*) & parent)->bmAddress;
 

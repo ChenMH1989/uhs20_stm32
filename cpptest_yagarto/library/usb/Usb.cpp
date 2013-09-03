@@ -703,10 +703,10 @@ uint8_t USB::DefaultAddressing(uint8_t parent, uint8_t port, bool lowspeed) {
         p0 = addrPool.GetUsbDevicePtr(0);
 
         if (!p0)
-                return USB_ERROR_ADDRESS_NOT_FOUND_IN_POOL;
+			return USB_ERROR_ADDRESS_NOT_FOUND_IN_POOL;
 
         if (!p0->epinfo)
-                return USB_ERROR_EPINFO_IS_NULL;
+			return USB_ERROR_EPINFO_IS_NULL;
 
         p0->lowspeed = (lowspeed) ? true : false;
 
@@ -714,7 +714,7 @@ uint8_t USB::DefaultAddressing(uint8_t parent, uint8_t port, bool lowspeed) {
         uint8_t bAddress = addrPool.AllocAddress(parent, false, port);
 
         if (!bAddress)
-                return USB_ERROR_OUT_OF_ADDRESS_SPACE_IN_POOL;
+			return USB_ERROR_OUT_OF_ADDRESS_SPACE_IN_POOL;
 
         p = addrPool.GetUsbDevicePtr(bAddress);
 
@@ -727,9 +727,9 @@ uint8_t USB::DefaultAddressing(uint8_t parent, uint8_t port, bool lowspeed) {
         rcode = setAddr(0, 0, bAddress);
 
         if (rcode) {
-                addrPool.FreeAddress(bAddress);
-                bAddress = 0;
-                return rcode;
+			addrPool.FreeAddress(bAddress);
+			bAddress = 0;
+			return rcode;
         }
         return 0;
 };
@@ -846,7 +846,7 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
 
         // Get device descriptor
         rcode = getDevDescr(0, 0, 8, (uint8_t*)buf);	// 8 should be enough, sizeof (USB_DEVICE_DESCRIPTOR)
-        printf("\nGot 1st 8 bytes desc.");
+        printf("\nControl - Got 1st 8 bytes desc.");
 
         // Extract Max Packet Size from the device descriptor
         epInfo.maxPktSize = (uint8_t)((USB_DEVICE_DESCRIPTOR*)buf)->bMaxPacketSize0;
@@ -868,7 +868,7 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
         //if (!bAddress)
         //        return USB_ERROR_OUT_OF_ADDRESS_SPACE_IN_POOL;
         rcode = getDevDescr(0, 0, sizeof(USB_DEVICE_DESCRIPTOR), (uint8_t*)buf);
-        printf("\nGot 2nd 18 bytes desc.");
+        printf("\nControl - Got 2nd 18 bytes desc.");
 
         uint16_t vid = (uint16_t)((USB_DEVICE_DESCRIPTOR*)buf)->idVendor;
         uint16_t pid = (uint16_t)((USB_DEVICE_DESCRIPTOR*)buf)->idProduct;

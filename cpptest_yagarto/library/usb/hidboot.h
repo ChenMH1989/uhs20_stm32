@@ -251,7 +251,7 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
 
         AddressPool &addrPool = pUsb->GetAddressPool();
 
-        printf("\nBM Init");
+        printf("\nHIDBoot Init\n");
 
         if(bAddress)
 			return USB_ERROR_CLASS_INSTANCE_ALREADY_IN_USE;
@@ -281,7 +281,7 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
         // Get device descriptor
         rcode = pUsb->getDevDescr(0, 0, 8, (uint8_t*) buf);
         //STM_EVAL_LEDToggle(LED1);
-        printf("hidboot - Get 2nd 8 byte desc.\n");
+        printf("HIDBoot - Get 2nd 8 byte desc.\n");
         if(!rcode)
 			len = (buf[0] > constBufSize) ? constBufSize : buf[0];
 
@@ -314,11 +314,8 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
 			USBTRACE2("setAddr:", rcode);
 			return rcode;
         }
-        /* modify control channels to update device address */
-        USB::USBH_Modify_Channel (pUsb->coreConfig, epInfo[0].hcNumIn, bAddress, 0, 0, 0);
-        USB::USBH_Modify_Channel (pUsb->coreConfig, epInfo[0].hcNumOut, bAddress, 0, 0, 0);
 
-        printf("Addr:%d\n", bAddress);
+        printf("HIDBoot Addr:%d\n", bAddress);
 
         p->lowspeed = false;
 
@@ -361,9 +358,12 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
         } // for
         //STM_EVAL_LEDToggle(LED1);
 
-        if(bNumEP < 2)
-			return USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
-
+        if(bNumEP < 2) {
+        	printf("\nHIDBoot Dev not supported, bNumEP = %d", bNumEP);
+			addrPool.FreeAddress(bAddress);
+			bAddress = 0;
+        	return USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
+        }
         //USBTRACE2("\r\nbAddr:", bAddress);
         //USBTRACE2("\r\nbNumEP:", bNumEP);
 
@@ -394,12 +394,12 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
 			if(rcode)
 				goto FailSetIdle;
         }
-        USBTRACE("BM configured\r\n");
+        USBTRACE("HIDBoot BM configured\r\n");
 
         bPollEnable = true;
 
         epInfo[1].hcNumIn = USB::USBH_Alloc_Channel(pUsb->coreConfig, epInfo[1].epAddr);
-		printf("\nAllocated hc num_in = %d (EP_TYPE_INTR)", epInfo[1].hcNumIn);
+		printf("\nHIDBoot Pipe in = %d (EP_TYPE_INTR)", epInfo[1].hcNumIn);
 
         // Assign epInfo to epinfo pointer
         rcode = pUsb->setEpInfoEntry(bAddress, bNumEP, epInfo);
