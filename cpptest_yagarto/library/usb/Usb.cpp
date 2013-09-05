@@ -389,7 +389,7 @@ uint8_t USB::OutTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t nbytes, uint8
 	uint8_t rcode = hrSUCCESS, retry_count;
 	uint8_t *data_p = data; //local copy of the data pointer
 	uint16_t bytes_tosend, nak_count;
-	uint16_t bytes_left = nbytes;
+	uint16_t bytes_left = nbytes, last_bytesleft = nbytes;
 	USB_OTG_CORE_HANDLE *pdev = coreConfig;
 	uint32_t hcnum = pep->hcNumOut;
 
@@ -451,7 +451,7 @@ uint8_t USB::OutTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t nbytes, uint8
 			//regWr(rSNDBC, bytes_tosend); //set number of bytes
 			//regWr(rHXFR, (tokOUT | pep->epAddr)); //dispatch packet
 			HCD_SubmitRequest(pdev, hcnum);
-
+PollStatus:
 			rcode = USB_ERROR_TRANSFER_TIMEOUT;
 			while (timeout > millis())  //while (!(regRd(rHIRQ) & bmHXFRDNIRQ)); //wait for the completion IRQ
 			{
@@ -472,7 +472,19 @@ uint8_t USB::OutTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t nbytes, uint8
 						nak_count++;	//maybe a NOT_READY happens
 						if (nak_limit && (nak_count == nak_limit))
 							goto breakout;
-						//return ( rcode);
+/*						else if (URB_NOTREADY == HCD_GetURB_State(pdev, hcnum)) {
+							USB_OTG_HCCHAR_TypeDef hcchar;
+							hcchar.d32 = USB_OTG_READ_REG32(&pdev->regs.HC_REGS[hcnum]->HCCHAR);
+							if(hcchar.b.eptype == EP_TYPE_BULK) {
+								pdev->host.URB_State[hcnum] = URB_IDLE;
+								// re-activate the channel
+								hcchar.b.chen = 1;
+								hcchar.b.chdis = 0;
+								USB_OTG_WRITE_REG32(&pdev->regs.HC_REGS[hcnum]->HCCHAR, hcchar.d32);
+			                    STM_EVAL_LEDToggle(LED1);
+								goto PollStatus;	//return ( rcode);
+							}
+						}*/
 						break;
 					case hrTIMEOUT:
 						retry_count++;
@@ -491,10 +503,28 @@ uint8_t USB::OutTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t nbytes, uint8
 				}//switch( rcode
 
 				/* process NAK according to Host out NAK bug */
-				uint32_t xfered_bytes = pdev->host.hc[hcnum].xfer_count;
-				bytes_left = nbytes - xfered_bytes;
-		    	pdev->host.hc[hcnum].xfer_buff = data + xfered_bytes;
-		    	pdev->host.hc[hcnum].xfer_len = bytes_left;
+/*				uint32_t *addr;
+				uint32_t i;
+				for(addr = (uint32_t *)0x50000000, i = 0; i < 0x12; addr++, i++) {
+					printf("\naddr(%x) = %x", addr, *addr);
+				}*/
+				USB_OTG_HCTSIZn_TypeDef hctsiz;
+				hctsiz.d32 = USB_OTG_READ_REG32(&pdev->regs.HC_REGS[hcnum]->HCTSIZ);
+
+				bytes_left = hctsiz.b.pktcnt << 6;
+				if(last_bytesleft != bytes_left) {
+					last_bytesleft = bytes_left;
+					pdev->host.hc[hcnum].xfer_buff = data + nbytes - bytes_left;
+					pdev->host.hc[hcnum].xfer_len = bytes_left;
+
+					if(((nbytes - bytes_left) >> 6) & 0x1) {	// if sent odd times packets
+						pdev->host.hc[hcnum].toggle_out ^= 0x1;
+						pdev->host.hc[hcnum].data_pid = (pdev->host.hc[hcnum].toggle_out) ? HC_PID_DATA1 : HC_PID_DATA0;
+					}
+					pdev->host.hc[hcnum].isEvenTimesToggle = 0;	// will be re-calculate in HCD_SubmitRequest
+					retry_count = 0;
+					nak_count = 0;
+				}
 				//regWr(rSNDBC, 0);
 				//regWr(rSNDFIFO, *data_p);
 				//regWr(rSNDBC, bytes_tosend);

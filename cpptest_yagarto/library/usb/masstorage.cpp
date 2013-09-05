@@ -218,6 +218,8 @@ again:
         cbw.CBWCB[8] = 1;
 
         SetCurLUN(lun);
+        STM_EVAL_LEDToggle(LED1);
+
         uint8_t er = HandleSCSIError(Transaction(&cbw, bsize, (void*)buf, 0));
         STM_EVAL_LEDToggle(LED1);
 
@@ -1122,6 +1124,7 @@ uint8_t BulkOnly::Transaction(CommandBlockWrapper *pcbw, uint16_t buf_size, void
         usberr = pUsb->outTransfer(bAddress,
         		epInfo[epDataOutIndex].epAddr,
         		sizeof (CommandBlockWrapper), (uint8_t*)pcbw);
+        STM_EVAL_LEDToggle(LED1);
 
         ret = HandleUsbError(usberr, epDataOutIndex);
         //ret = HandleUsbError(pUsb->outTransfer(bAddress, epInfo[epDataOutIndex].epAddr, sizeof (CommandBlockWrapper), (uint8_t*)pcbw), epDataOutIndex);
@@ -1157,6 +1160,7 @@ uint8_t BulkOnly::Transaction(CommandBlockWrapper *pcbw, uint16_t buf_size, void
                 int tries = 2;
                 while (tries--) {
                         //while ((usberr = pUsb->inTransfer(bAddress, epInfo[epDataInIndex].epAddr, &bytes, (uint8_t*) & csw)) == hrBUSY) delay(1);
+
                 	usberr = pUsb->inTransfer(bAddress, epInfo[epDataInIndex].epAddr, &bytes, (uint8_t*) & csw);
                 	STM_EVAL_LEDToggle(LED1);
 
