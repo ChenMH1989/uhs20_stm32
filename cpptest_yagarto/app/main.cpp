@@ -7,15 +7,18 @@
 
 #include "bsp.h"
 #include "Usb.h"
-#include "hidboot.h"
+#include "hidboot.h"	// todo: will move hid to its testxx file
 #include "usbhub.h"
 
-#include "testusbhostKEYBOARD.h"
-#include "testusbhostFAT.h"
+#include "testusbhostKEYBOARD.h"	// HID class test case
+#include "testusbhostFAT.h"			// Mass storage class test case
+#include "testusbhostSPP.h"			// Bluetooth SPP class test case
 
 USB_OTG_CORE_HANDLE USB_OTG_Core_dev;
 USB Usb(&USB_OTG_Core_dev);
 USBHub Hub(&Usb);
+
+// HID class, todo : will move hid to its testxx file
 HIDBoot<HID_PROTOCOL_KEYBOARD> HidKeyboard(&Usb);
 KbdRptParser Prs;
 
@@ -36,11 +39,11 @@ int main(void)
 
 	HidKeyboard.SetReportParser(0, (HIDReportParser*)&Prs);
     // Initialize generic storage. This must be done before USB starts.
-    InitStorage();
+    InitClassStorage();
+    InitClassBtd();
 
 	if (Usb.Init() != -1)
 		printf("Usb is initialized.\n");
-
 
 	uint32_t heart_cnt = 0;
 

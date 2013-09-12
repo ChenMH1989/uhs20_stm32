@@ -104,3 +104,4 @@ void OTG_FS_IRQHandler(void)
 }
 
 void __cxa_pure_virtual(void) { while (1); }
+uint8_t pgm_read_byte (const uint8_t *abc) {return *abc;}

@@ -994,7 +994,8 @@ uint8_t USB::getConfDescr(uint8_t addr, uint8_t ep, uint16_t nbytes, uint8_t con
 }
 
 uint8_t USB::getConfDescr(uint8_t addr, uint8_t ep, uint8_t conf, USBReadParser *p) {
-        const uint8_t bufSize = 64;
+        const uint32_t bufSize = 256;	//64; due to receiving more than 1 packet (64bytes) in stm imple.
+        									// we need a large buffer for BTD class, which has a 177 bytes desc.
         uint8_t buf[bufSize];
 
         uint8_t ret = getConfDescr(addr, ep, 8, conf, buf);

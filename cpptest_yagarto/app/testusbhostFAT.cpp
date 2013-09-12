@@ -14,10 +14,6 @@
 #include <FAT/FAT.h>
 #include <string.h>
 
-
-#define true 0x1
-#define false 0x0
-
 volatile int brightness = 0; // how bright the LED is
 volatile int fadeAmount = 80; // how many points to fade the LED by
 volatile uint8_t current_state = 1;
@@ -50,7 +46,7 @@ BulkOnly *Bulk[MAX_USB_MS_DRIVERS];
  * This must be called before using generic_storage. This works around a G++ bug.
  * Thanks to Lei Shi for the heads up.
  */
-void InitStorage(void) {
+void InitClassStorage(void) {
 
     for (int i = 0; i < _VOLUMES; i++) {
 		Fats[i] = NULL;

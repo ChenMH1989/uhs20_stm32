@@ -33,7 +33,10 @@ __inline void delay_us(uint32_t count) {
 }
 #define delay delay_ms
 extern USB_OTG_CORE_HANDLE USB_OTG_Core_dev;
+#define true 0x1
+#define false 0x0
 
+uint8_t pgm_read_byte (const uint8_t *abc);
 void __cxa_pure_virtual(void);
 //#define __init      __attribute__ ((__section__ (".init.text")))
 #ifdef __cplusplus
