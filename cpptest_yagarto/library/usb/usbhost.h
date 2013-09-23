@@ -704,15 +704,15 @@ uint32_t STM32F2< SS, INTR >::USB_OTG_ReadHPRT0(USB_OTG_CORE_HANDLE *pdev)
 template< typename SS, typename INTR >
 uint8_t STM32F2< SS, INTR >::USBH_Alloc_Channel(USB_OTG_CORE_HANDLE *pdev, uint8_t ep_addr)
 {
-  uint16_t hc_num;
+	uint16_t hc_num;
 
-  hc_num =  USBH_GetFreeChannel(pdev);
+	hc_num =  USBH_GetFreeChannel(pdev);
 
-  if (hc_num != HC_ERROR)
-  {
-	pdev->host.channel[hc_num] = HC_USED | ep_addr;
-  }
-  return hc_num;
+	if (hc_num != HC_ERROR)
+	{
+		pdev->host.channel[hc_num] = HC_USED | ep_addr;
+	}
+	return hc_num;
 }
 
 /**

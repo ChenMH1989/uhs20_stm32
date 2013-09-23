@@ -373,7 +373,6 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
 
         // Set Configuration Value
         rcode = pUsb->setConf(bAddress, 0, bConfNum);
-        //STM_EVAL_LEDToggle(LED1);
 
         if(rcode)
 			goto FailSetConfDescr;

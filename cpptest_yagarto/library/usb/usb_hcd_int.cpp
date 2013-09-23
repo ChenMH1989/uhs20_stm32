@@ -728,10 +728,12 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
       pdev->host.URB_State[num] = URB_ERROR;  
       
     }
-    else if(hcchar.b.eptype == EP_TYPE_INTR)
+    else if (pdev->host.HC_Status[num] == HC_NAK)
     {
-      pdev->host.hc[num].toggle_in ^= 1;
-      pdev->host.URB_State[num] = URB_DONE;      // for nak case
+    	if(hcchar.b.eptype == EP_TYPE_INTR)
+    		pdev->host.hc[num].toggle_in ^= 1;
+
+    	pdev->host.URB_State[num] = URB_DONE;      // for nak case
     }
     
     CLEAR_HC_INT(hcreg , chhltd);    
@@ -746,8 +748,14 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
     CLEAR_HC_INT(hcreg , xacterr);    
     
   }
-  else if (hcint.b.nak)  
-  {  
+	else if (hcint.b.nak)
+	{
+		pdev->host.hc[num].nak_count++;
+		if(pdev->host.hc[num].nak_count == pdev->host.hc[num].nak_limit) {
+			UNMASK_HOST_INT_CHH (num);
+			USB::USB_OTG_HC_Halt(pdev, num);
+		} else {
+/* just judge nak to decide if halt the channel
     if(hcchar.b.eptype == EP_TYPE_INTR)
     {
       UNMASK_HOST_INT_CHH (num);
@@ -755,15 +763,15 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
     }
     else if  ((hcchar.b.eptype == EP_TYPE_CTRL)||
               (hcchar.b.eptype == EP_TYPE_BULK))
-    {
-      /* re-activate the channel  */
-      hcchar.b.chen = 1;
-      hcchar.b.chdis = 0;
-      USB_OTG_WRITE_REG32(&pdev->regs.HC_REGS[num]->HCCHAR, hcchar.d32); 
-    }
-    pdev->host.HC_Status[num] = HC_NAK;
-    CLEAR_HC_INT(hcreg , nak);   
-  }
+    {*/
+			/* re-activate the channel  */
+			hcchar.b.chen = 1;
+			hcchar.b.chdis = 0;
+			USB_OTG_WRITE_REG32(&pdev->regs.HC_REGS[num]->HCCHAR, hcchar.d32);
+		}
+		pdev->host.HC_Status[num] = HC_NAK;
+		CLEAR_HC_INT(hcreg , nak);
+	}
   
   
   return 1;

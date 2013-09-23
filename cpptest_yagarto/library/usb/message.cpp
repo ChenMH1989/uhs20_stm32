@@ -19,7 +19,7 @@ e-mail   :  support@circuitsathome.com
 // 0x80 is the default (i.e. trace) to turn off set this global to something lower.
 // this allows for 126 other debugging levels.
 // TO-DO: Allow assignment to a different serial port
-int UsbDEBUGlvl = 0x70;
+int UsbDEBUGlvl = 0x80;
 
 void E_Notifyc(char c, int lvl) {
         if (UsbDEBUGlvl < lvl) return;
@@ -39,8 +39,8 @@ void E_NotifyStr(char const * msg, int lvl) {
         if (UsbDEBUGlvl < lvl) return;
         if (!msg) return;
         char c;
-
-        while (c = *msg++) E_Notifyc(c, lvl);
+        printf("%s", msg);
+        //while (c = *msg++) E_Notifyc(c, lvl);
 }
 
 void E_Notify(uint8_t b, int lvl) {

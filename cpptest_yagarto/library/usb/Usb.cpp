@@ -97,6 +97,7 @@ uint8_t USB::SetAddress(uint8_t addr, uint8_t ep, EpInfo **ppep, uint16_t &nak_l
 
         nak_limit = (0x0001UL << (((*ppep)->bmNakPower > USB_NAK_MAX_POWER) ? USB_NAK_MAX_POWER : (*ppep)->bmNakPower));
         nak_limit--;
+
         /*
           USBTRACE2("\r\nAddress: ", addr);
           USBTRACE2(" EP: ", ep);
@@ -316,8 +317,9 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 			// yes, we flip it wrong here so that next time it is actually correct!
 //			pep->bmRcvToggle = (regRd(rHRSL) & bmSNDTOGRD) ? 0 : 1;
 //			regWr(rHCTL, (pep->bmRcvToggle) ? bmRCVTOG1 : bmRCVTOG0); //set toggle value
-			//pdev->host.hc[hcnum].toggle_in ^= 0x1;
-			printf("\nInXfer - toggle err");	// will meet toggle error here? todo: sometimes once unplugged device, there is small chance that Poll still works here.
+			STM_EVAL_LEDToggle(LED3);
+			//pdev->host.hc[hcnum].toggle_in ^= 0x1;	//btd hci case
+			printf("\nInXfer - toggle err, hc num=%d", hcnum);	// will meet toggle error here? todo: sometimes once unplugged device, there is small chance that Poll still works here.
 			//continue;
 		}
 		if (rcode) {
@@ -558,6 +560,9 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
         USB_OTG_CORE_HANDLE *pdev = coreConfig;
         uint8_t pid = 0;
 
+		pdev->host.hc[hcnum].nak_count = 0;
+		pdev->host.hc[hcnum].nak_limit = nak_limit;
+
         while (timeout > millis()) {
 			//regWr(rHXFR, (token | ep)); //launch the transfer
         	if(token == tokSETUP) {
@@ -594,7 +599,27 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
 					//regWr(rHIRQ, bmHXFRDNIRQ); //clear the interrupt
 					rcode = 0x00;
 					break;
-				}
+				} 
+				
+/*				else {	//todo: because in bt case, there are two in ep (int-in, bulk-in), that we need to check hid/msc case either.
+					rcode = HCD_GetHCState(pdev, hcnum);
+					if(rcode == hrNAK) {
+						nak_count++;
+						if (nak_limit && (nak_count == nak_limit))
+							return (rcode);
+						uint8_t eptype = pdev->host.hc[hcnum].ep_type;
+						if (eptype == EP_TYPE_INTR) {
+							break;
+						} else if ((eptype == EP_TYPE_CTRL) || (eptype == EP_TYPE_BULK)) {					      // re-activate the channel
+							USB_OTG_HCCHAR_TypeDef hcchar;
+							hcchar.d32 = USB_OTG_READ_REG32(&pdev->regs.HC_REGS[hcnum]->HCCHAR);
+							hcchar.b.chen = 1;
+							hcchar.b.chdis = 0;
+							USB_OTG_WRITE_REG32(&pdev->regs.HC_REGS[hcnum]->HCCHAR, hcchar.d32);
+							delay_us(200);
+						}
+					}
+				}*/
 			}
 
 			//if (rcode != 0x00) //exit if timeout
@@ -603,7 +628,7 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
             rcode = HCD_GetHCState(pdev, hcnum);	//(regRd(rHRSL) & 0x0f); //analyze transfer result
 			switch (rcode) {
 				case hrNAK: 	//todo: if timeout above with nak, we need to consider the next xfer.
-					nak_count++;
+					nak_count = pdev->host.hc[hcnum].nak_count;
 					if (nak_limit && (nak_count == nak_limit))
 						return (rcode);
 					break;

@@ -130,6 +130,8 @@ typedef struct USB_OTG_hc
   uint8_t       toggle_in;
   uint8_t isEvenTimesToggle;
   uint8_t       toggle_out;
+  uint16_t		nak_count;
+  uint16_t 		nak_limit;
   uint32_t       dma_addr;  
 }
 USB_OTG_HC , *PUSB_OTG_HC;

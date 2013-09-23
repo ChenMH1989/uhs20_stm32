@@ -355,7 +355,7 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         uint8_t rcode;
         uint8_t num_of_conf = epInfo[1].epAddr; // number of configurations
         epInfo[1].epAddr = 0;
-        USBTRACE("\n\nMSC Init");
+        USBTRACE("\nMSC Init");
 
         AddressPool &addrPool = pUsb->GetAddressPool();
         UsbDevice *p = addrPool.GetUsbDevicePtr(bAddress);
@@ -409,9 +409,11 @@ uint8_t BulkOnly::Init(uint8_t parent, uint8_t port, bool lowspeed) {
                         break;
         } // for
 
-        if (bNumEP < 3)
-			return USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
-
+        if (bNumEP < 3) {
+        	printf("\nMSC Dev not supported, bNumEP = %d", bNumEP);
+			rcode = USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
+			goto Fail;
+        }
         // Assign epInfo to epinfo pointer
         pUsb->setEpInfoEntry(bAddress, bNumEP, epInfo);
 

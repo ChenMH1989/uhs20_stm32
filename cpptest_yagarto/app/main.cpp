@@ -76,7 +76,7 @@ int main(void)
 		//delay_ms(500);
 		if(++heart_cnt > 50000) {
 			heart_cnt = 0;
-			STM_EVAL_LEDToggle(LED2);
+			//STM_EVAL_LEDToggle(LED2);
 		}
 		//printf("\ntime:%d", millis());
 		STM_EVAL_LEDToggle(LED3);

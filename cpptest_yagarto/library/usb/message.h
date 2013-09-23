@@ -49,8 +49,8 @@ void NotifyFail(uint8_t rcode);
 #else
 //#define Notify(...) ((void)0)
 #define Notify E_Notify
-
-#define NotifyStr(...) ((void)0)
+#define NotifyStr E_NotifyStr
+//#define NotifyStr(...) ((void)0)
 #define Notifyc(...) ((void)0)
 #define NotifyFailGetDevDescr(...) ((void)0)
 #define NotifyFailSetDevTblEntry(...) ((void)0)
