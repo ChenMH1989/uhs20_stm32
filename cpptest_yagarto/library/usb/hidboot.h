@@ -402,7 +402,7 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
         // Assign epInfo to epinfo pointer
         rcode = pUsb->setEpInfoEntry(bAddress, bNumEP, epInfo);
         USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[1].hcNumIn, bAddress, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_INTR, epInfo[1].maxPktSize);
-        pUsb->coreConfig->host.hc[epInfo[1].hcNumIn].toggle_in ^= 0x1;
+        pUsb->coreConfig->host.hc[epInfo[1].hcNumIn].toggle_in = 0x0;
 
         return 0;
 
@@ -518,8 +518,9 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Poll() {
 		}
 		STM_EVAL_LEDToggle(LED1);
 
-		//for (uint8_t i=0; i<read; i++)
-		//	printf("%d ", buf[i]);
+//		printf("\n\rrcode = %d -> ", rcode);
+//		for (uint8_t i=0; i<read; i++)
+//			printf("%d ", buf[i]);
 
 
 		if(pRptParser)

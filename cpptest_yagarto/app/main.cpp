@@ -52,6 +52,7 @@ int main(void)
 		Usb.Task(&USB_OTG_Core_dev);
 
 		check_fatstatus();
+		check_btdstatus();
 
 		if(uint8_t inchar = GetKey()) {
 			printf("%c", inchar);
@@ -79,7 +80,7 @@ int main(void)
 			//STM_EVAL_LEDToggle(LED2);
 		}
 		//printf("\ntime:%d", millis());
-		STM_EVAL_LEDToggle(LED3);
+		//STM_EVAL_LEDToggle(LED3);
 	}
 
 	return 1;

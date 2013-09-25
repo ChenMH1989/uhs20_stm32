@@ -282,7 +282,7 @@ uint8_t USB::inTransfer(uint8_t addr, uint8_t ep, uint16_t *nbytesptr, uint8_t* 
 			//rcode = HCD_GetHCState(pdev, pep->hcNumIn);
 			//if (rcode == HC_XFRC) {
 				//pep->bmRcvToggle ^= 0x1;
-				pdev->host.hc[pep->hcNumIn].toggle_in ^= 0x1;
+				//pdev->host.hc[pep->hcNumIn].toggle_in ^= 0x1;
 			//}
 		}
 
@@ -583,7 +583,23 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
         		} else {
         			pdev->host.hc[hcnum].ep_is_in = 0;
         			pid = (pdev->host.hc[hcnum].toggle_out)? HC_PID_DATA1 : HC_PID_DATA0;
+        		}/*
+        		if(pid == HC_PID_DATA0) {
+        			STM_EVAL_LEDToggle(LED1);
+        			delay_ms(1);
+        			STM_EVAL_LEDToggle(LED1);
+        			delay_ms(1);
+        			STM_EVAL_LEDToggle(LED1);
         		}
+        		if(pid == HC_PID_DATA1) {
+        			STM_EVAL_LEDToggle(LED1);
+        			delay_ms(1);
+					STM_EVAL_LEDToggle(LED1);
+					delay_ms(1);
+					STM_EVAL_LEDToggle(LED1);
+					delay_ms(1);
+					STM_EVAL_LEDToggle(LED1);
+        		}*/
     			pdev->host.hc[hcnum].data_pid = pid;
     			pdev->host.hc[hcnum].xfer_buff = data_p;
     			pdev->host.hc[hcnum].xfer_len = nbytes;

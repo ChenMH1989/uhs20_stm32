@@ -17,7 +17,7 @@
 
 #include "BTD.h"
 // To enable serial debugging uncomment "#define DEBUG_USB_HOST" in message.h
-//#define EXTRADEBUG // Uncomment to get even more debugging data
+#define EXTRADEBUG // Uncomment to get even more debugging data
 
 const uint8_t BTD::BTD_CONTROL_PIPE = 0;
 const uint8_t BTD::BTD_EVENT_PIPE = 1;
@@ -194,9 +194,14 @@ uint8_t BTD::Init(uint8_t parent, uint8_t port, bool lowspeed) {
                 // First interface in the configuration must have Bluetooth assigned Class/Subclass/Protocol
                 // And 3 endpoints - interrupt-IN, bulk-IN, bulk-OUT, not necessarily in this order
                 for (uint8_t i = 0; i < num_of_conf; i++) {
-                        ConfigDescParser<USB_CLASS_WIRELESS_CTRL, WI_SUBCLASS_RF, WI_PROTOCOL_BT, CP_MASK_COMPARE_ALL> confDescrParser(this);
-                        rcode = pUsb->getConfDescr(bAddress, 0, i, &confDescrParser);
-                        if (rcode)
+                        if (VID == IOGEAR_GBU521_VID && PID == IOGEAR_GBU521_PID) {
+                                ConfigDescParser<USB_CLASS_VENDOR_SPECIFIC, WI_SUBCLASS_RF, WI_PROTOCOL_BT, CP_MASK_COMPARE_ALL> confDescrParser(this); // Needed for the IOGEAR GBU521
+                                rcode = pUsb->getConfDescr(bAddress, 0, i, &confDescrParser);
+                        } else {
+                                ConfigDescParser<USB_CLASS_WIRELESS_CTRL, WI_SUBCLASS_RF, WI_PROTOCOL_BT, CP_MASK_COMPARE_ALL> confDescrParser(this);
+                                rcode = pUsb->getConfDescr(bAddress, 0, i, &confDescrParser);
+                        }
+                        if (rcode) // Check error code
                                 goto FailGetConfDescr;
                         if (bNumEP >= BTD_MAX_ENDPOINTS) // All endpoints extracted
                                 break;
@@ -244,7 +249,7 @@ uint8_t BTD::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         		(lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_BULK, epInfo[2].maxPktSize);
         USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[3].hcNumOut, bAddress,
         		(lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_BULK, epInfo[3].maxPktSize);
-        pUsb->coreConfig->host.hc[epInfo[1].hcNumIn].toggle_in = 0x1;
+        pUsb->coreConfig->host.hc[epInfo[1].hcNumIn].toggle_in = 0x0;
         //pUsb->coreConfig->host.hc[epInfo[2].hcNumIn].toggle_in ^= 0x1;
 
         printf("\nBTD Pipe EP[1] int-in = %x, addr = 0x%x(0x81)", epInfo[1].hcNumIn, epInfo[1].epAddr);
@@ -388,7 +393,7 @@ void BTD::HCI_event_task() {
         /* check the event pipe*/
         uint16_t MAX_BUFFER_SIZE = BULK_MAXPKTSIZE; // Request more than 16 bytes anyway, the inTransfer routine will take care of this
         uint8_t rcode = pUsb->inTransfer(bAddress, epInfo[ BTD_EVENT_PIPE ].epAddr, &MAX_BUFFER_SIZE, hcibuf); // input on endpoint 1
-        if (!rcode) // Check for errors
+        if (!rcode || rcode == hrNAK) // Check for errors
         {
                 switch (hcibuf[0]) //switch on event type
                 {
@@ -573,7 +578,7 @@ void BTD::HCI_event_task() {
                 } // switch
         }
 #ifdef EXTRADEBUG
-        else if (rcode != hrNAK) {
+        else {
                 Notify(PSTR("\r\nHCI event error: "), 0x80);
                 D_PrintHex<uint8_t > (rcode, 0x80);
         }

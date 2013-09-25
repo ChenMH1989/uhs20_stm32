@@ -704,6 +704,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
       hcchar.b.oddfrm  = 1;
       USB_OTG_WRITE_REG32(&pdev->regs.HC_REGS[num]->HCCHAR, hcchar.d32); 
       pdev->host.URB_State[num] = URB_DONE;  
+      pdev->host.hc[num].toggle_in ^= 1;
     }
     
   }
@@ -730,8 +731,8 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
     }
     else if (pdev->host.HC_Status[num] == HC_NAK)
     {
-    	if(hcchar.b.eptype == EP_TYPE_INTR)
-    		pdev->host.hc[num].toggle_in ^= 1;
+    	//if(hcchar.b.eptype == EP_TYPE_INTR)
+    	//	pdev->host.hc[num].toggle_in ^= 1;
 
     	pdev->host.URB_State[num] = URB_DONE;      // for nak case
     }

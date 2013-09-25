@@ -9,5 +9,6 @@
 #define TESTUSBHOSTSPP_H_
 
 void InitClassBtd(void);
+void check_btdstatus(void);
 
 #endif /* TESTUSBHOSTSPP_H_ */
