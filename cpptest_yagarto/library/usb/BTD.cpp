@@ -25,12 +25,14 @@ const uint8_t BTD::BTD_DATAIN_PIPE = 2;
 const uint8_t BTD::BTD_DATAOUT_PIPE = 3;
 
 BTD::BTD(USB *p) :
+connectToWii(false), 	// init issue on ARM
+pairWithWii(false),		// init issue on ARM
 pUsb(p), // Pointer to USB class instance - mandatory
 bAddress(0), // Device address - mandatory
 bNumEP(1), // If config descriptor needs to be parsed
 qNextPollTime(0), // Reset NextPollTime
-bPollEnable(false), // Don't start polling before dongle is connected
-pollInterval(0)	//on ARM, this is 0xFA in default, so init it to 0.
+bPollEnable(false), 	// // Don't start polling before dongle is connected
+pollInterval(0)		// init issue on ARM
 {
 	uint8_t i;
 	for (i = 0; i < BTD_MAX_ENDPOINTS; i++) {

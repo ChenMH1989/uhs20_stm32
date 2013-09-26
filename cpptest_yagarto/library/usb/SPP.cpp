@@ -68,6 +68,7 @@ void SPP::Reset() {
         l2cap_rfcomm_state = L2CAP_RFCOMM_WAIT;
         l2cap_event_flag = 0;
         sppIndex = 0;
+        waitForLastCommand = false;	// init issue on ARM
 }
 
 void SPP::disconnect() {
@@ -178,7 +179,7 @@ void SPP::ACLData(uint8_t* l2capinbuf) {
                                         l2cap_event_flag |= L2CAP_FLAG_DISCONNECT_RESPONSE;
                                 }
                         } else if (l2capinbuf[8] == L2CAP_CMD_INFORMATION_REQUEST) {
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                 Notify(PSTR("\r\nInformation request"), 0x80);
 #endif
                                 identifier = l2capinbuf[9];
@@ -258,7 +259,7 @@ void SPP::ACLData(uint8_t* l2capinbuf) {
                         D_PrintHex<uint8_t > (rfcommPfBit, 0x80);
 #endif
                         if (rfcommChannelType == RFCOMM_DISC) {
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                 Notify(PSTR("\r\nReceived Disconnect RFCOMM Command on channel: "), 0x80);
                                 D_PrintHex<uint8_t > (rfcommChannel >> 3, 0x80);
 #endif
@@ -288,7 +289,7 @@ void SPP::ACLData(uint8_t* l2capinbuf) {
                                                 Notifyc(l2capinbuf[i + 11 + offset], 0x80);
 #endif
                                 } else if (rfcommChannelType == RFCOMM_UIH && l2capinbuf[11] == BT_RFCOMM_RPN_CMD) { // UIH Remote Port Negotiation Command
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nReceived UIH Remote Port Negotiation Command"), 0x80);
 #endif
                                         rfcommbuf[0] = BT_RFCOMM_RPN_RSP; // Command
@@ -303,7 +304,7 @@ void SPP::ACLData(uint8_t* l2capinbuf) {
                                         rfcommbuf[9] = l2capinbuf[20]; // Number of Frames
                                         sendRfcomm(rfcommChannel, rfcommDirection, 0, RFCOMM_UIH, rfcommPfBit, rfcommbuf, 0x0A); // UIH Remote Port Negotiation Response
                                 } else if (rfcommChannelType == RFCOMM_UIH && l2capinbuf[11] == BT_RFCOMM_MSC_CMD) { // UIH Modem Status Command
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nSend UIH Modem Status Response"), 0x80);
 #endif
                                         rfcommbuf[0] = BT_RFCOMM_MSC_RSP; // UIH Modem Status Response
@@ -314,12 +315,12 @@ void SPP::ACLData(uint8_t* l2capinbuf) {
                                 }
                         } else {
                                 if (rfcommChannelType == RFCOMM_SABM) { // SABM Command - this is sent twice: once for channel 0 and then for the channel to establish
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nReceived SABM Command"), 0x80);
 #endif
                                         sendRfcomm(rfcommChannel, rfcommDirection, rfcommCommandResponse, RFCOMM_UA, rfcommPfBit, rfcommbuf, 0x00); // UA Command
                                 } else if (rfcommChannelType == RFCOMM_UIH && l2capinbuf[11] == BT_RFCOMM_PN_CMD) { // UIH Parameter Negotiation Command
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nReceived UIH Parameter Negotiation Command"), 0x80);
 #endif
                                         rfcommbuf[0] = BT_RFCOMM_PN_RSP; // UIH Parameter Negotiation Response
@@ -334,7 +335,7 @@ void SPP::ACLData(uint8_t* l2capinbuf) {
                                         rfcommbuf[9] = 0x00; // Number of Frames
                                         sendRfcomm(rfcommChannel, rfcommDirection, 0, RFCOMM_UIH, rfcommPfBit, rfcommbuf, 0x0A);
                                 } else if (rfcommChannelType == RFCOMM_UIH && l2capinbuf[11] == BT_RFCOMM_MSC_CMD) { // UIH Modem Status Command
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nSend UIH Modem Status Response"), 0x80);
 #endif
                                         rfcommbuf[0] = BT_RFCOMM_MSC_RSP; // UIH Modem Status Response
@@ -344,7 +345,7 @@ void SPP::ACLData(uint8_t* l2capinbuf) {
                                         sendRfcomm(rfcommChannel, rfcommDirection, 0, RFCOMM_UIH, rfcommPfBit, rfcommbuf, 0x04);
 
                                         delay(1);
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nSend UIH Modem Status Command"), 0x80);
 #endif
                                         rfcommbuf[0] = BT_RFCOMM_MSC_CMD; // UIH Modem Status Command
@@ -355,7 +356,7 @@ void SPP::ACLData(uint8_t* l2capinbuf) {
                                         sendRfcomm(rfcommChannel, rfcommDirection, 0, RFCOMM_UIH, rfcommPfBit, rfcommbuf, 0x04);
                                 } else if (rfcommChannelType == RFCOMM_UIH && l2capinbuf[11] == BT_RFCOMM_MSC_RSP) { // UIH Modem Status Response
                                         if (!creditSent) {
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                                 Notify(PSTR("\r\nSend UIH Command with credit"), 0x80);
 #endif
                                                 sendRfcommCredit(rfcommChannelConnection, rfcommDirection, 0, RFCOMM_UIH, 0x10, sizeof (rfcommDataBuffer)); // Send credit
@@ -364,11 +365,11 @@ void SPP::ACLData(uint8_t* l2capinbuf) {
                                                 waitForLastCommand = true;
                                         }
                                 } else if (rfcommChannelType == RFCOMM_UIH && l2capinbuf[10] == 0x01) { // UIH Command with credit
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nReceived UIH Command with credit"), 0x80);
 #endif
                                 } else if (rfcommChannelType == RFCOMM_UIH && l2capinbuf[11] == BT_RFCOMM_RPN_CMD) { // UIH Remote Port Negotiation Command
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nReceived UIH Remote Port Negotiation Command"), 0x80);
 #endif
                                         rfcommbuf[0] = BT_RFCOMM_RPN_RSP; // Command
@@ -415,7 +416,8 @@ void SPP::ACLData(uint8_t* l2capinbuf) {
 
 void SPP::Run() {
         if (waitForLastCommand && (millis() - timer) > 100) { // We will only wait 100ms and see if the UIH Remote Port Negotiation Command is send, as some deviced don't send it
-#ifdef DEBUG_USB_HOST
+
+#if 1 //def DEBUG_USB_HOST
                 Notify(PSTR("\r\nRFCOMM Connection is now established - Automatic\r\n"), 0x80);
 #endif
                 creditSent = false;

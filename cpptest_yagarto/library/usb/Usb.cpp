@@ -838,6 +838,7 @@ uint8_t USB::AttemptConfig(uint8_t driver, uint8_t parent, uint8_t port, bool lo
 	if (rcode == USB_ERROR_CONFIG_REQUIRES_ADDITIONAL_RESET) {
 		if (parent == 0) {
 			// Send a bus reset on the root interface.
+			printf("\n\rusb::atte need reset?");
 //TODO: but reset			regWr(rHCTL, bmBUSRST); //issue bus reset
 			delay_ms(102); // delay 102ms, compensate for clock inaccuracy.
 		} else {
@@ -942,7 +943,7 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
 
         // Get device descriptor
         rcode = getDevDescr(0, 0, 8, (uint8_t*)buf);	// 8 should be enough, sizeof (USB_DEVICE_DESCRIPTOR)
-        printf("\nControl - Got 1st 8 bytes desc.");
+        printf("\nControl - Got 1st 8 bytes desc");
 
         // Extract Max Packet Size from the device descriptor
         epInfo.maxPktSize = (uint8_t)((USB_DEVICE_DESCRIPTOR*)buf)->bMaxPacketSize0;

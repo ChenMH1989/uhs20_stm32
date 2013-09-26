@@ -43,7 +43,7 @@ int main(void)
     InitClassBtd();
 
 	if (Usb.Init() != -1)
-		printf("Usb is initialized.\n");
+		printf("\nUsb is initialized.\n");
 
 	uint32_t heart_cnt = 0;
 
