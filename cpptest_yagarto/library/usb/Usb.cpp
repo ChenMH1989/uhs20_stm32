@@ -323,7 +323,7 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 			//continue;
 		}
 		if (rcode) {
-			//printf(">>>>>>>> Problem! dispatchPkt %2.2x\r\n", rcode);
+			//printf("\r\n>>>>>>>> Problem! dispatchPkt %d", rcode);
 			break; //should be 0, indicating ACK. Else return error code.
 		}
 		/* check for RCVDAVIRQ and generate error if not present */
@@ -616,7 +616,10 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
 					rcode = 0x00;
 					break;
 				} 
-				
+				if (pdev->host.ConnSts == 0) {
+					rcode = hrJERR;
+					return rcode;
+				}
 /*				else {	//todo: because in bt case, there are two in ep (int-in, bulk-in), that we need to check hid/msc case either.
 					rcode = HCD_GetHCState(pdev, hcnum);
 					if(rcode == hrNAK) {
