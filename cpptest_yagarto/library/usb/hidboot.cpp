@@ -120,7 +120,7 @@ uint8_t KeyboardReportParser::OemToAscii(uint8_t mod, uint8_t key) {
         }// Numbers
         else if (key > 0x1d && key < 0x27) {
                 if (shift)
-                        return 0;	//hzx ((uint8_t)pgm_read_byte(&numKeys[key - 0x1e]));
+                        return ((uint8_t)pgm_read_byte(&numKeys[key - 0x1e]));
                 else
                         return (key - 0x1e + '1');
         }// Keypad Numbers
@@ -128,9 +128,9 @@ uint8_t KeyboardReportParser::OemToAscii(uint8_t mod, uint8_t key) {
                 if (kbdLockingKeys.kbdLeds.bmNumLock == 1)
                         return (key - 0x59 + '1');
         } else if (key > 0x2c && key < 0x39)
-                return 0;	//hzx ((shift) ? (uint8_t)pgm_read_byte(&symKeysUp[key - 0x2d]) : (uint8_t)pgm_read_byte(&symKeysLo[key - 0x2d]));
+                return ((shift) ? (uint8_t)pgm_read_byte(&symKeysUp[key - 0x2d]) : (uint8_t)pgm_read_byte(&symKeysLo[key - 0x2d]));
         else if (key > 0x53 && key < 0x59)
-                return 0;	//hzx (uint8_t)pgm_read_byte(&padKeys[key - 0x54]);
+                return (uint8_t)pgm_read_byte(&padKeys[key - 0x54]);
         else {
                 switch (key) {
                         case KEY_SPACE: return (0x20);

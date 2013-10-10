@@ -57,6 +57,9 @@ void InitClassStorage(void) {
 	for(int i=0; i< MAX_USB_MS_DRIVERS; i++) {
 		Bulk[i]= new BulkOnly(&Usb);
 	}
+
+	printf("\r\nMSC Library Started");
+
 }
 
 bool isfat(uint8_t t) {

@@ -38,7 +38,7 @@ e-mail   :  support@circuitsathome.com
 //Debug macros. In 1.0 it is possible to move strings to PROGMEM by defining USBTRACE (USB_HOST_SERIAL.print(F(s)))
 //#define USBTRACE(s) (Notify(PSTR(s), 0x80))
 #define USBTRACE(s) (printf(s))
-#define USBTRACE2(s,r) (Notify(PSTR(s), 0x80), D_PrintHex((r), 0x80), Notify(PSTR("\r\n"), 0x80))
+#define USBTRACE2(s,r) (Notify(PSTR(s), 0x80), D_PrintHex<uint8_t>((r), 0x80), Notify(PSTR("\r\n"), 0x80))
 /* Common setup data constant combinations  */
 #define bmREQ_GET_DESCR     USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_STANDARD|USB_SETUP_RECIPIENT_DEVICE     //get descriptor request type
 #define bmREQ_SET           USB_SETUP_HOST_TO_DEVICE|USB_SETUP_TYPE_STANDARD|USB_SETUP_RECIPIENT_DEVICE     //set request type for all but 'set feature' and 'set interface'

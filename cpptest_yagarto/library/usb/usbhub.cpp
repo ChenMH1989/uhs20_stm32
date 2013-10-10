@@ -104,7 +104,7 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 
                         // Extract Max Packet Size from the device descriptor
                         epInfo[0].maxPktSize = ((USB_DEVICE_DESCRIPTOR*)buf)->bMaxPacketSize0;
-                        epInfo[1].maxPktSize = epInfo[0].maxPktSize;
+
                         // Assign new address to the device
                         rcode = pUsb->setAddr(0, 0, bAddress);
 
@@ -124,7 +124,8 @@ uint8_t USBHub::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 
                         // we need to assign hcnumber for this new bAddress(0x41)
                         p = addrPool.GetUsbDevicePtr(bAddress);
-                        p->epinfo->hcNumber = oldep_ptr->hcNumber;
+                        p->epinfo->hcNumber = epInfo[0].hcNumber;
+                        p->epinfo->maxPktSize = epInfo[0].maxPktSize;
 
                         if (len)
 							rcode = pUsb->getDevDescr(bAddress, 0, len, (uint8_t*)buf);

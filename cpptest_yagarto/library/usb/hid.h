@@ -172,7 +172,7 @@ protected:
 
 public:
 
-        HID(USB *pusb) : pUsb(pusb) {
+        HID(USB *pusb) : pUsb(pusb), bAddress(0) {
         };
 
         const USB* GetUsb() {

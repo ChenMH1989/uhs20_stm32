@@ -156,10 +156,16 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
 
 //        bytesWr(rSUDFIFO, 8, (uint8_t*) & setup_pkt); //transfer to setup packet FIFO
         // *pep points to EP0 (HC0-out, HC1-in)
-        if(pdev->host.hc[pep->hcNumOut].dev_addr != addr)
-        	USBH_Modify_Channel (pdev, pep->hcNumOut, addr, 0, 0, 0);
-        if(pdev->host.hc[pep->hcNumIn].dev_addr != addr)
-        	USBH_Modify_Channel (pdev, pep->hcNumIn, addr, 0, 0, 0);
+        if(addr != 0) {	// in case hid->setAddr() called, we should reset or reuse hid's addr. suck..
+        	if(pdev->host.hc[pep->hcNumOut].dev_addr != addr)
+				pdev->host.hc[pep->hcNumOut].dev_addr = addr;
+				//USBH_Modify_Channel (pdev, pep->hcNumOut, addr, 0, 0, 0, 0);
+			if(pdev->host.hc[pep->hcNumIn].dev_addr != addr)
+				pdev->host.hc[pep->hcNumIn].dev_addr = addr;
+				//USBH_Modify_Channel (pdev, pep->hcNumIn, addr, 0, 0, 0, 0);
+        }
+
+
         rcode = dispatchPkt(tokSETUP, ep, nak_limit, (uint8_t *)&setup_pkt, sizeof(setup_pkt), pep->hcNumOut); //dispatch packet
 
         if (rcode) //return HRSLT if not zero
@@ -173,6 +179,8 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
 #if 1
 				//pep->bmRcvToggle = 1; //bmRCVTOG1;
 				pdev->host.hc[pep->hcNumIn].toggle_in = 0x1;
+				pep->bmRcvToggle = pdev->host.hc[pep->hcNumIn].toggle_in;
+
 				uint16_t read = total;	//nbytes;
 				rcode = InTransfer(pep, nak_limit, &read, dataptr);
 
@@ -213,6 +221,7 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
                 {
 					//pep->bmSndToggle = 1; //bmSNDTOG1;
 					pdev->host.hc[pep->hcNumOut].toggle_out = 0x1;
+					pep->bmSndToggle = pdev->host.hc[pep->hcNumOut].toggle_out;
 					rcode = OutTransfer(pep, nak_limit, nbytes, dataptr);
 			}
 			if (rcode) //return error
@@ -276,16 +285,6 @@ uint8_t USB::inTransfer(uint8_t addr, uint8_t ep, uint16_t *nbytesptr, uint8_t* 
 			return rcode;
         }
 
-		USB_OTG_HCCHAR_TypeDef hcchar;
-		hcchar.d32 = USB_OTG_READ_REG32(&pdev->regs.HC_REGS[pep->hcNumIn]->HCCHAR);
-		if(hcchar.b.eptype == EP_TYPE_INTR) {
-			//rcode = HCD_GetHCState(pdev, pep->hcNumIn);
-			//if (rcode == HC_XFRC) {
-				//pep->bmRcvToggle ^= 0x1;
-				//pdev->host.hc[pep->hcNumIn].toggle_in ^= 0x1;
-			//}
-		}
-
         return InTransfer(pep, nak_limit, nbytesptr, data);
 }
 
@@ -295,7 +294,7 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 
 	uint16_t nbytes = *nbytesptr;
 	//printf("Requesting %i bytes ", nbytes);
-	uint8_t maxpktsize = pep->maxPktSize;
+	uint16_t maxpktsize = pep->maxPktSize;
 	USB_OTG_CORE_HANDLE *pdev = coreConfig;
 	uint32_t hcnum = pep->hcNumIn;	//pdev->host.hc_num_in;
 
@@ -309,6 +308,15 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 #else	// get one packet per transfer.
 	//*nbytesptr = 0;	// 1. means how many bytes was received.
 						// 2. on stm32, we receive all data at once, so we don't need to count this var.
+
+	if(maxpktsize != pdev->host.hc[hcnum].max_packet)
+		pdev->host.hc[hcnum].max_packet = maxpktsize;
+	uint8_t ep_addr = pep->epAddr & 0x7F;	// todo: dont like this, will remove "&0x7f"
+	if(ep_addr != pdev->host.hc[hcnum].ep_num)
+		pdev->host.hc[hcnum].ep_num = ep_addr;
+    	//USBH_Modify_Channel(pdev, hcnum, 0, ep_addr, 0, 0, 0);
+	if(pep->bmRcvToggle != pdev->host.hc[hcnum].toggle_in)	// for hid composite
+		pdev->host.hc[hcnum].toggle_in = pep->bmRcvToggle;
 
 	while (1) // use a 'return' to exit this loop
 	{
@@ -362,7 +370,9 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
 			// Save toggle value
 			// the toggle is flipped at interrupt handler.
 			//pep->bmRcvToggle = ((regRd(rHRSL) & bmRCVTOGRD)) ? 1 : 0;
+			pep->bmRcvToggle = pdev->host.hc[hcnum].toggle_in;	//save last toggle
 			//printf("\r\n");
+
 			rcode = 0;
 			break;
 		} // if
@@ -400,6 +410,8 @@ uint8_t USB::OutTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t nbytes, uint8
 	if (maxpktsize < 1 || maxpktsize > 64)
 		return USB_ERROR_INVALID_MAX_PKT_SIZE;
 
+	if(maxpktsize != pdev->host.hc[hcnum].max_packet)
+			pdev->host.hc[hcnum].max_packet = maxpktsize;
 #if 0
 	pdev->host.hc[hcnum].ep_is_in = 0;
 	pdev->host.hc[hcnum].xfer_buff = data; //buff;
@@ -604,7 +616,7 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit, uint8_t 
     			pdev->host.hc[hcnum].xfer_buff = data_p;
     			pdev->host.hc[hcnum].xfer_len = nbytes;
 
-        		HCD_SubmitRequest(pdev, hcnum);
+    			HCD_SubmitRequest(pdev, hcnum);
         	}
 
 			rcode = USB_ERROR_TRANSFER_TIMEOUT;
@@ -942,7 +954,6 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
         p->epinfo = &epInfo;
 
         p->lowspeed = lowspeed;
-        STM_EVAL_LEDToggle(LED1);
 
         // Get device descriptor
         rcode = getDevDescr(0, 0, 8, (uint8_t*)buf);	// 8 should be enough, sizeof (USB_DEVICE_DESCRIPTOR)
@@ -950,8 +961,8 @@ uint8_t USB::Configuring(uint8_t parent, uint8_t port, bool lowspeed) {
 
         // Extract Max Packet Size from the device descriptor
         epInfo.maxPktSize = (uint8_t)((USB_DEVICE_DESCRIPTOR*)buf)->bMaxPacketSize0;
-        USB::USBH_Modify_Channel (pdev, epInfo.hcNumOut, 0, 0, 0, epInfo.maxPktSize);
-        USB::USBH_Modify_Channel (pdev, epInfo.hcNumIn, 0, 0, 0, epInfo.maxPktSize);
+        //USB::USBH_Modify_Channel (pdev, epInfo.hcNumOut, 0, 0, 0, 0, epInfo.maxPktSize);
+        //USB::USBH_Modify_Channel (pdev, epInfo.hcNumIn, 0, 0, 0, 0, epInfo.maxPktSize);
 
         // Restore p->epinfo
 //         keep CtrlXfer's hcNumOut/In in p->epinfo. p->epinfo = oldep_ptr;

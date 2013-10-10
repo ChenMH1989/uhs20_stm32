@@ -101,19 +101,22 @@ uint8_t BTD::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         p->lowspeed = lowspeed;
 
         // Get device descriptor
-        rcode = pUsb->getDevDescr(0, 0, sizeof (USB_DEVICE_DESCRIPTOR), (uint8_t*)buf); // Get device descriptor - addr, ep, nbytes, data
-
+        rcode = pUsb->getDevDescr(0, 0, 8, (uint8_t*)buf); // Get device descriptor - addr, ep, nbytes, data
+        if(!rcode) {
+        	p->epinfo->maxPktSize = (uint8_t)((USB_DEVICE_DESCRIPTOR*)buf)->bMaxPacketSize0;
+        	rcode = pUsb->getDevDescr(0, 0, sizeof (USB_DEVICE_DESCRIPTOR), (uint8_t*)buf); // Get device descriptor - addr, ep, nbytes, data
+        }
         // Restore p->epinfo
         p->epinfo = oldep_ptr;
 
         if (rcode)
-                goto FailGetDevDescr;
+			goto FailGetDevDescr;
 
         // Allocate new address according to device class
         bAddress = addrPool.AllocAddress(parent, false, port);
 
         if (!bAddress)
-                return USB_ERROR_OUT_OF_ADDRESS_SPACE_IN_POOL;
+			return USB_ERROR_OUT_OF_ADDRESS_SPACE_IN_POOL;
 
         // Extract Max Packet Size from device descriptor
         epInfo[0].maxPktSize = (uint8_t)((USB_DEVICE_DESCRIPTOR*)buf)->bMaxPacketSize0;
@@ -134,6 +137,8 @@ uint8_t BTD::Init(uint8_t parent, uint8_t port, bool lowspeed) {
         Notify(PSTR("\r\nBTD Addr: "), 0x80);
         D_PrintHex<uint8_t > (bAddress, 0x80);
 #endif
+        delay(300); // Spec says you should wait at least 200ms
+
         p->lowspeed = false;
 
         //get pointer to assigned address record
@@ -168,7 +173,7 @@ uint8_t BTD::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 
                 if (my_bdaddr[0] == 0x00 && my_bdaddr[1] == 0x00 && my_bdaddr[2] == 0x00 && my_bdaddr[3] == 0x00 && my_bdaddr[4] == 0x00 && my_bdaddr[5] == 0x00) {
 #ifdef DEBUG_USB_HOST
-                        Notify(PSTR("\r\nPlease plug in the dongle before trying to pair with the PS3 Controller\n\rOr set the Bluetooth address in the constructor of the PS3BT class"), 0x80);
+                        Notify(PSTR("\r\nPlease plug in the dongle before trying to pair with the PS3 Controller\r\nor set the Bluetooth address in the constructor of the PS3BT class"), 0x80);
 #endif
                 } else {
                         if (PID == PS3_PID || PID == PS3NAVIGATION_PID)
@@ -185,7 +190,7 @@ uint8_t BTD::Init(uint8_t parent, uint8_t port, bool lowspeed) {
 #endif
                 }
 
-                rcode = pUsb->setConf(bAddress, epInfo[ BTD_CONTROL_PIPE ].epAddr, 0); // Reset configuration value
+                pUsb->setConf(bAddress, epInfo[ BTD_CONTROL_PIPE ].epAddr, 0); // Reset configuration value
                 pUsb->setAddr(bAddress, 0, 0); // Reset address
                 Release(); // Release device
                 return USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED; // Return
@@ -415,7 +420,7 @@ void BTD::HCI_event_task() {
 
                         case EV_COMMAND_STATUS:
                                 if (hcibuf[2]) { // show status on serial if not OK
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nHCI Command Failed: "), 0x80);
                                         D_PrintHex<uint8_t > (hcibuf[2], 0x80);
                                         Notify(PSTR(" "), 0x80);
@@ -429,7 +434,7 @@ void BTD::HCI_event_task() {
                         case EV_INQUIRY_COMPLETE:
                                 if (inquiry_counter >= 5) {
                                         inquiry_counter = 0;
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nCouldn't find Wiimote"), 0x80);
 #endif
                                         connectToWii = false;
@@ -523,18 +528,18 @@ void BTD::HCI_event_task() {
 
                         case EV_PIN_CODE_REQUEST:
                                 if (pairWithWii) {
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nPairing with wiimote"), 0x80);
 #endif
                                         hci_pin_code_request_reply();
                                 } else if (btdPin != NULL) {
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nBluetooth pin is set too: "), 0x80);
                                         NotifyStr(btdPin, 0x80);
 #endif
                                         hci_pin_code_request_reply();
                                 } else {
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nNo pin was set"), 0x80);
 #endif
                                         hci_pin_code_negative_request_reply();
@@ -542,7 +547,7 @@ void BTD::HCI_event_task() {
                                 break;
 
                         case EV_LINK_KEY_REQUEST:
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                 Notify(PSTR("\r\nReceived Key Request"), 0x80);
 #endif
                                 hci_link_key_request_negative_reply();
@@ -550,7 +555,7 @@ void BTD::HCI_event_task() {
 
                         case EV_AUTHENTICATION_COMPLETE:
                                 if (pairWithWii && !connectToWii) {
-#ifdef DEBUG_USB_HOST
+#if 1 //def DEBUG_USB_HOST
                                         Notify(PSTR("\r\nPairing successful"), 0x80);
 #endif
                                         connectToWii = true; // Only send the ACL data to the Wii service

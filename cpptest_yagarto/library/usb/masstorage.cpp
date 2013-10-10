@@ -218,11 +218,7 @@ again:
         cbw.CBWCB[8] = 1;
 
         SetCurLUN(lun);
-        STM_EVAL_LEDToggle(LED1);
-
         uint8_t er = HandleSCSIError(Transaction(&cbw, bsize, (void*)buf, 0));
-        STM_EVAL_LEDToggle(LED1);
-
         if (er == MASS_ERR_WRITE_STALL) {
                 MediaCTL(lun, 1);
                 delay(150);
@@ -310,9 +306,11 @@ uint8_t BulkOnly::ConfigureDevice(uint8_t parent, uint8_t port, bool lowspeed) {
 
 	p->lowspeed = lowspeed;
 	// Get device descriptor
-	rcode = pUsb->getDevDescr(0, 0, constBufSize, (uint8_t*)buf);
-	//STM_EVAL_LEDToggle(LED1);
-
+	rcode = pUsb->getDevDescr(0, 0, 8, (uint8_t*)buf);
+	if(!rcode) {
+		p->epinfo->maxPktSize = (uint8_t)((USB_DEVICE_DESCRIPTOR*)buf)->bMaxPacketSize0;
+		rcode = pUsb->getDevDescr(0, 0, constBufSize, (uint8_t*)buf);
+	}
 	// Restore p->epinfo
 	p->epinfo = oldep_ptr;
 

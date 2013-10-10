@@ -147,7 +147,7 @@ public:
         static uint8_t USBH_Alloc_Channel(USB_OTG_CORE_HANDLE *pdev, uint8_t ep_addr);
         static uint16_t USBH_GetFreeChannel(USB_OTG_CORE_HANDLE *pdev);
         static uint8_t USBH_Open_Channel(USB_OTG_CORE_HANDLE *pdev, uint8_t hc_num, uint8_t dev_address, uint8_t speed, uint8_t ep_type, uint16_t mps);
-        static uint8_t USBH_Modify_Channel (USB_OTG_CORE_HANDLE *pdev, uint8_t hc_num, uint8_t dev_address, uint8_t speed, uint8_t ep_type, uint16_t mps);
+        static uint8_t USBH_Modify_Channel (USB_OTG_CORE_HANDLE *pdev, uint8_t hc_num, uint8_t dev_address, uint8_t ep_addr, uint8_t speed, uint8_t ep_type, uint16_t mps);
         static USB_OTG_STS USB_OTG_HC_Init(USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num);
         static USBH_Status USBH_Free_Channel(USB_OTG_CORE_HANDLE *pdev, uint8_t idx);
         static USBH_Status USBH_CtlSendSetup(USB_OTG_CORE_HANDLE *pdev, uint8_t *buff, uint8_t hc_num);
@@ -793,6 +793,7 @@ template< typename SS, typename INTR >
 uint8_t STM32F2< SS, INTR >::USBH_Modify_Channel (USB_OTG_CORE_HANDLE *pdev,
                             uint8_t hc_num,
                             uint8_t dev_address,
+                            uint8_t ep_addr,
                             uint8_t speed,
                             uint8_t ep_type,
                             uint16_t mps)
@@ -802,6 +803,11 @@ uint8_t STM32F2< SS, INTR >::USBH_Modify_Channel (USB_OTG_CORE_HANDLE *pdev,
   {
     pdev->host.hc[hc_num].dev_addr = dev_address;
   }
+
+  //if(ep_addr != 0) {
+	//  pdev->host.hc[hc_num].ep_num &= HC_USED;
+	//  pdev->host.hc[hc_num].ep_num |= (ep_addr & 0x7f);
+  //}
 
   if((pdev->host.hc[hc_num].max_packet != mps) && (mps != 0))
   {
@@ -977,6 +983,9 @@ uint32_t STM32F2< SS, INTR >::HCD_SubmitRequest (USB_OTG_CORE_HANDLE *pdev , uin
 {
 	pdev->host.URB_State[hc_num] = URB_IDLE;
 	pdev->host.hc[hc_num].xfer_count = 0 ;
+
+	USBH_Modify_Channel(pdev, hc_num, 0, 0, 0, 0, 0);	// in case ep_is_in changed
+
 	return USB_OTG_HC_StartXfer(pdev, hc_num);
 }
 

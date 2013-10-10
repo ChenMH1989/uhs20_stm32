@@ -165,16 +165,15 @@ protected:
         };
 };
 
-#define totalEndpoints						2
-
+#define totalEndpoints (2 + ((BOOT_PROTOCOL == (HID_PROTOCOL_KEYBOARD | HID_PROTOCOL_MOUSE))? 1 : 0))
+#define epMUL (((BOOT_PROTOCOL & HID_PROTOCOL_KEYBOARD)? 1 : 0)+((BOOT_PROTOCOL & HID_PROTOCOL_MOUSE)? 1 : 0))
 #define HID_MAX_HID_CLASS_DESCRIPTORS		5
 
 template <const uint8_t BOOT_PROTOCOL>
 class HIDBoot : public HID //public USBDeviceConfig, public UsbConfigXtracter
 {
         EpInfo epInfo[totalEndpoints];
-
-        HIDReportParser *pRptParser;
+        HIDReportParser *pRptParser[epMUL];
 
         uint8_t bConfNum; // configuration number
         uint8_t bIfaceNum; // Interface Number
@@ -186,14 +185,14 @@ class HIDBoot : public HID //public USBDeviceConfig, public UsbConfigXtracter
         void Initialize();
 
         virtual HIDReportParser* GetReportParser(uint8_t id) {
-                return pRptParser;
+                return pRptParser[id];
         };
 
 public:
         HIDBoot(USB *p);
 
         virtual bool SetReportParser(uint8_t id, HIDReportParser *prs) {
-                pRptParser = prs;
+                pRptParser[id] = prs;
                 return true;
         };
 
@@ -214,9 +213,12 @@ template <const uint8_t BOOT_PROTOCOL>
 HIDBoot<BOOT_PROTOCOL>::HIDBoot(USB *p) :
 HID(p),
 qNextPollTime(0),
-bPollEnable(false),
-pRptParser(NULL) {
+bPollEnable(false) {
         Initialize();
+
+        for(uint8_t i = 0; i < epMUL; i++) {
+                pRptParser[i] = NULL;
+        }
         if(pUsb)
 			pUsb->RegisterDeviceClass(this);
 }
@@ -244,10 +246,10 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
         UsbDevice *p = NULL;
         EpInfo *oldep_ptr = NULL;
         uint8_t len = 0;
-        uint16_t cd_len = 0;
+        //uint16_t cd_len = 0;
 
         uint8_t num_of_conf; // number of configurations
-        uint8_t num_of_intf; // number of interfaces
+        //uint8_t num_of_intf; // number of interfaces
 
         AddressPool &addrPool = pUsb->GetAddressPool();
 
@@ -322,15 +324,14 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
         p = addrPool.GetUsbDevicePtr(bAddress);
         // let's copy ep0's hc_num to ep1
         p->epinfo->hcNumber = epInfo[0].hcNumber;
+        p->epinfo->maxPktSize = epInfo[0].maxPktSize;
 
         if(!p)
 			return USB_ERROR_ADDRESS_NOT_FOUND_IN_POOL;
 
         p->lowspeed = lowspeed;
-
         if(len)
 			rcode = pUsb->getDevDescr(bAddress, 0, len, (uint8_t*) buf);
-        //STM_EVAL_LEDToggle(LED1);
 
         if(rcode)
 			goto FailGetDevDescr;
@@ -345,31 +346,49 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
 
         //USBTRACE2("NC:", num_of_conf);
 
-        for(uint8_t i = 0; i < num_of_conf; i++) {
-			ConfigDescParser<
-					USB_CLASS_HID,
-					HID_BOOT_INTF_SUBCLASS,
-					BOOT_PROTOCOL,
-					CP_MASK_COMPARE_ALL> confDescrParser(this);
-			rcode = pUsb->getConfDescr(bAddress, 0, i, &confDescrParser);
+        // GCC will optimize unused stuff away.
+        if(BOOT_PROTOCOL & HID_PROTOCOL_KEYBOARD) {
+                for(uint8_t i = 0; i < num_of_conf; i++) {
+                        ConfigDescParser<
+                                USB_CLASS_HID,
+                                HID_BOOT_INTF_SUBCLASS,
+                                HID_PROTOCOL_KEYBOARD,
+                                CP_MASK_COMPARE_ALL> confDescrParserA(this);
 
-			if(bNumEP > 1)
-				break;
-        } // for
-        //STM_EVAL_LEDToggle(LED1);
+                        if(bNumEP == totalEndpoints)
+                                break;
+                        pUsb->getConfDescr(bAddress, 0, i, &confDescrParserA);
+                }
+        }
 
-        if(bNumEP < 2) {
+        // GCC will optimize unused stuff away.
+        if(BOOT_PROTOCOL & HID_PROTOCOL_MOUSE) {
+                for(uint8_t i = 0; i < num_of_conf; i++) {
+                        ConfigDescParser<
+                                USB_CLASS_HID,
+                                HID_BOOT_INTF_SUBCLASS,
+                                HID_PROTOCOL_MOUSE,
+                                CP_MASK_COMPARE_ALL> confDescrParserB(this);
+                        if(bNumEP == totalEndpoints)
+                                break;
+
+                        pUsb->getConfDescr(bAddress, 0, i, &confDescrParserB);
+                }
+        }
+
+        USBTRACE2("\r\nbAddr:", bAddress);
+        USBTRACE2("\r\nbNumEP:", bNumEP);
+        USBTRACE2("\r\ntotalEndpoints:", totalEndpoints);
+        if(bNumEP != totalEndpoints) {
         	printf("\nHIDBoot Dev not supported, bNumEP = %d", bNumEP);
         	rcode = USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED;
         	goto Fail;
         }
-        //USBTRACE2("\r\nbAddr:", bAddress);
-        //USBTRACE2("\r\nbNumEP:", bNumEP);
 
         // Assign epInfo to epinfo pointer
         rcode = pUsb->setEpInfoEntry(bAddress, bNumEP, epInfo);
 
-        //USBTRACE2("\r\nCnf:", bConfNum);
+        USBTRACE2("\r\nCnf:", bConfNum);
 
         // Set Configuration Value
         rcode = pUsb->setConf(bAddress, 0, bConfNum);
@@ -377,17 +396,16 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
         if(rcode)
 			goto FailSetConfDescr;
 
-        //USBTRACE2("\r\nIf:", bIfaceNum);
+        USBTRACE2("\r\nIf:", bIfaceNum);
 
         rcode = SetProtocol(bIfaceNum, HID_BOOT_PROTOCOL);
-        //STM_EVAL_LEDToggle(LED1);
 
         if(rcode)
 			goto FailSetProtocol;
 
-        if(BOOT_PROTOCOL == 1) {
-			rcode = SetIdle(bIfaceNum, 0, 0);
-	        //STM_EVAL_LEDToggle(LED1);
+        // GCC will optimize unused stuff away.
+        if(BOOT_PROTOCOL & HID_PROTOCOL_KEYBOARD) {
+                rcode = SetIdle(0/* bIfaceNum*/, 0, 0);
 
 			if(rcode)
 				goto FailSetIdle;
@@ -395,14 +413,17 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Init(uint8_t parent, uint8_t port, bool lowspeed
         USBTRACE("HIDBoot BM configured\r\n");
 
         bPollEnable = true;
-
-        epInfo[1].hcNumIn = USB::USBH_Alloc_Channel(pUsb->coreConfig, epInfo[1].epAddr);
-		printf("\nHIDBoot Pipe in = %d (EP_TYPE_INTR)", epInfo[1].hcNumIn);
+        uint8_t hcnum;
+        hcnum = USB::USBH_Alloc_Channel(pUsb->coreConfig, epInfo[1].epAddr);
+    	for(uint8_t i = 0; i < epMUL; i++) {
+    		epInfo[1+i].hcNumIn = hcnum;
+    	}
+		printf("\nHIDBoot Pipe in = %d (EP_TYPE_INTR)", hcnum);
 
         // Assign epInfo to epinfo pointer
         rcode = pUsb->setEpInfoEntry(bAddress, bNumEP, epInfo);
-        USB::USBH_Open_Channel(pUsb->coreConfig, epInfo[1].hcNumIn, bAddress, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_INTR, epInfo[1].maxPktSize);
-        pUsb->coreConfig->host.hc[epInfo[1].hcNumIn].toggle_in = 0x0;
+        USB::USBH_Open_Channel(pUsb->coreConfig, hcnum, bAddress, (lowspeed)?bmLOWSPEED:bmFULLSPEED, EP_TYPE_INTR, epInfo[1].maxPktSize);
+        pUsb->coreConfig->host.hc[hcnum].toggle_in = 0x0;
 
         return 0;
 
@@ -458,10 +479,8 @@ void HIDBoot<BOOT_PROTOCOL>::EndpointXtract(uint8_t conf, uint8_t iface, uint8_t
 	bConfNum = conf;
 	bIfaceNum = iface;
 
-	uint8_t index;
-
-	if((pep->bmAttributes & 0x03) == 3 && (pep->bEndpointAddress & 0x80) == 0x80) {
-		index = epInterruptInIndex;
+        if((pep->bmAttributes & 0x03) == 3 && (pep->bEndpointAddress & 0x80) == 0x80) {
+                uint8_t index = bNumEP;//epInterruptInIndex; //+ bNumEP;
 
 		// Fill in the endpoint info structure
 		//st bsp needs full address(0x81 for in channel)
@@ -480,9 +499,10 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Release() {
 		USB::USB_OTG_HC_Halt(pUsb->coreConfig, epInfo[1].hcNumIn);
 		USB::USBH_Free_Channel(pUsb->coreConfig, epInfo[1].hcNumIn);
 	}
-	//todo: we need to uninstall epInfo either.
-	epInfo[1].hcNumber = 0;
 
+	for(uint8_t i = 0; i < epMUL; i++) {
+		epInfo[i].hcNumber = 0;
+	}
 	pUsb->GetAddressPool().FreeAddress(bAddress);
 
 	bConfNum = 0;
@@ -491,12 +511,12 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Release() {
 	bAddress = 0;
 	qNextPollTime = 0;
 	bPollEnable = false;
+        return 0;
 }
 
 template <const uint8_t BOOT_PROTOCOL>
 uint8_t HIDBoot<BOOT_PROTOCOL>::Poll() {
 	uint8_t rcode = HC_IDLE;
-	URB_STATE URB_Status = URB_IDLE;
 
 	if(!bPollEnable)
 		return 0;
@@ -504,27 +524,36 @@ uint8_t HIDBoot<BOOT_PROTOCOL>::Poll() {
 	if(qNextPollTime <= millis()) {
 		qNextPollTime = millis() + 10;
 
-		const uint8_t const_buff_len = 16;
-		uint8_t buf[const_buff_len];
-		uint16_t read = (uint16_t) epInfo[epInterruptInIndex].maxPktSize;
-		rcode = pUsb->inTransfer(bAddress, epInfo[epInterruptInIndex].epAddr, &read, buf);
-
-		if(rcode) {
-			if(rcode != hrNAK) {
+		// To-do: optimize manually, getting rid of the loop
+		for(uint8_t i = 0; i < epMUL; i++) {
+			const uint8_t const_buff_len = 20;	//16;
+			uint8_t buf[const_buff_len];
+			uint16_t read = (uint16_t) epInfo[epInterruptInIndex + i].maxPktSize;
+			STM_EVAL_LEDToggle(LED1);
+			if(i==1) {
+				delay(1);
 				STM_EVAL_LEDToggle(LED1);
-				printf("\nPoll:%d <- ", rcode);
+				delay(1);
+				STM_EVAL_LEDToggle(LED1);
+				//delay(1);
 			}
-			return rcode;
+
+			uint8_t rcode = pUsb->inTransfer(bAddress, epInfo[epInterruptInIndex + i].epAddr, &read, buf);
+			if(!rcode) {
+				if(pRptParser[i])
+					pRptParser[i]->Parse((HID*)this, 0, (uint8_t) read, buf);
+
+				//for (uint8_t i=0; i<read; i++)
+				//	PrintHex<uint8_t>(buf[i]);
+				//if (read)
+				//	USB_HOST_SERIAL.println("");
+			} else {
+				if(rcode != hrNAK) {
+					USBTRACE2("Poll:", rcode);
+					break;
+				}
+			}
 		}
-		STM_EVAL_LEDToggle(LED1);
-
-//		printf("\n\rrcode = %d -> ", rcode);
-//		for (uint8_t i=0; i<read; i++)
-//			printf("%d ", buf[i]);
-
-
-		if(pRptParser)
-			pRptParser->Parse((HID*)this, 0, (uint8_t) read, buf);
 	}
 	return rcode;
 }

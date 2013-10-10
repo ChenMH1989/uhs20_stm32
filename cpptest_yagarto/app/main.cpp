@@ -7,7 +7,6 @@
 
 #include "bsp.h"
 #include "Usb.h"
-#include "hidboot.h"	// todo: will move hid to its testxx file
 #include "usbhub.h"
 
 #include "testusbhostKEYBOARD.h"	// HID class test case
@@ -17,10 +16,6 @@
 USB_OTG_CORE_HANDLE USB_OTG_Core_dev;
 USB Usb(&USB_OTG_Core_dev);
 USBHub Hub(&Usb);
-
-// HID class, todo : will move hid to its testxx file
-HIDBoot<HID_PROTOCOL_KEYBOARD> HidKeyboard(&Usb);
-KbdRptParser Prs;
 
 int main(void)
 {
@@ -37,8 +32,8 @@ int main(void)
 	delay_ms(50);
 	STM_EVAL_LEDToggle(LED1);
 
-	HidKeyboard.SetReportParser(0, (HIDReportParser*)&Prs);
     // Initialize generic storage. This must be done before USB starts.
+	InitHid();
     InitClassStorage();
     InitClassBtd();
 
